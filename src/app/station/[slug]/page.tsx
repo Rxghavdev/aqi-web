@@ -9,7 +9,7 @@ import { BandScale } from "@/components/reading/BandScale";
 import { CityAverageLink } from "@/components/reading/CityAverageLink";
 import { FactCard } from "@/components/reading/FactCard";
 import { heroClass, heroStyle } from "@/components/reading/hero";
-import { loadCity, loadStationPage } from "@/components/reading/load";
+import { loadStationPage } from "@/components/reading/load";
 import { PollutantBoard } from "@/components/reading/PollutantBoard";
 import { ReadingStage } from "@/components/reading/ReadingStage";
 import { ReadingSkeleton } from "@/components/reading/ReadingSkeleton";
@@ -50,9 +50,8 @@ async function StationReading({ params }: { params: StationParams }) {
   const { slug } = await params;
   const page = await loadStationPage(slug);
   if (!page) notFound();
-  const { station, city } = page;
+  const { station, city, nearby } = page;
   const official = officialStation(station);
-  const siblings = city ? (await loadCity(city.slug))?.stations : null;
 
   return (
     <article className="reading">
@@ -93,9 +92,9 @@ async function StationReading({ params }: { params: StationParams }) {
         }
         map={
           <StationMap
-            pins={stationPins(siblings ?? [station])}
+            pins={stationPins(nearby)}
             activeSlug={station.slug}
-            hereLabel="This city"
+            hereLabel="Nearby"
           />
         }
       />

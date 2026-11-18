@@ -72,7 +72,10 @@ export type PlaceReport = {
   city: CityAqi | null;
   nearest: StationAqi | null;
   distanceKm: number | null;
+  /** Stations in the nearest city, worst first. */
   stations: StationAqi[];
+  /** Monitors within about 60 km, nearest first, for the map. */
+  nearby: StationAqi[];
   spike: Spike | null;
   /** ISO time the CPCB snapshot was stored. */
   snapshotAt: string | null;

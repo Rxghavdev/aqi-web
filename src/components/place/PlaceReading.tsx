@@ -103,12 +103,12 @@ export function PlaceReading({
           />
         }
         map={
-          <StationMap
-            pins={stationPins(report.stations)}
-            activeSlug={nearest.slug}
-            user={point}
-            hereLabel="This city"
-          />
+            <StationMap
+              pins={stationPins(report.nearby)}
+              activeSlug={nearest.slug}
+              user={point}
+              hereLabel="Nearby"
+            />
         }
       />
       <section className="section">

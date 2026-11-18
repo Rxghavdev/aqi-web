@@ -53,8 +53,7 @@ export async function listCities(): Promise<CityAqi[]> {
 }
 
 /** City averages placed at the mean of their station coordinates. */
-export async function listMapCities(): Promise<MapCityPoint[]> {
-  const { snapshot } = await readSnapshot();
+export async function listMapCities(): Promise<MapCityPoint[]> {  const { snapshot } = await readSnapshot();
   if (!snapshot) return [];
   const grouped = new Map<string, { lat: number; lon: number; count: number }>();
   for (const station of snapshot.stations) {
@@ -92,12 +91,18 @@ export async function listMapCities(): Promise<MapCityPoint[]> {
 
 export async function getCity(
   slug: string,
-): Promise<{ city: CityAqi; stations: StationAqi[] } | null> {
+): Promise<{ city: CityAqi; stations: StationAqi[]; nearby: StationAqi[] } | null> {
   const { snapshot } = await readSnapshot();
   if (!snapshot) return null;
   const city = snapshot.cities.find((item) => item.slug === slug);
   if (!city) return null;
-  return { city, stations: stationsIn(snapshot, city).sort(compareStations) };
+  const stations = stationsIn(snapshot, city).sort(compareStations);
+  const point = centroid(stations);
+  return {
+    city,
+    stations,
+    nearby: point ? stationsAround(snapshot, point.latitude, point.longitude, 60) : stations,
+  };
 }
 
 export async function getStation(slug: string): Promise<StationAqi | null> {
@@ -107,7 +112,11 @@ export async function getStation(slug: string): Promise<StationAqi | null> {
 
 export async function getStationPage(
   slug: string,
-): Promise<{ station: StationAqi; city: CityAqi | null } | null> {
+): Promise<{
+  station: StationAqi;
+  city: CityAqi | null;
+  nearby: StationAqi[];
+} | null> {
   const { snapshot } = await readSnapshot();
   if (!snapshot) return null;
   const station = snapshot.stations.find((item) => item.slug === slug);
@@ -116,7 +125,11 @@ export async function getStationPage(
     snapshot.cities.find(
       (item) => item.city === station.city && item.state === station.state,
     ) ?? null;
-  return { station, city };
+  return {
+    station,
+    city,
+    nearby: stationsAround(snapshot, station.latitude, station.longitude, 60),
+  };
 }
 
 export async function getPlace(input: {
@@ -229,6 +242,7 @@ async function placeFromPoint(
     nearest,
     distanceKm: roundKm(nearestKm),
     stations: [nearest, ...others],
+    nearby: stationsAround(snapshot, nearest.latitude, nearest.longitude, 60),
     spike: null,
     snapshotAt: snapshot.snapshotAt,
   };
@@ -249,6 +263,7 @@ async function placeFromQuery(
       nearest: null,
       distanceKm: null,
       stations,
+      nearby: stations,
       spike: null,
       snapshotAt: snapshot.snapshotAt,
     };
@@ -272,6 +287,7 @@ async function placeFromQuery(
     nearest: station,
     distanceKm: null,
     stations: [station, ...others],
+    nearby: stationsAround(snapshot, station.latitude, station.longitude, 60),
     spike: null,
     snapshotAt: snapshot.snapshotAt,
   };
@@ -343,6 +359,28 @@ function stationsIn(
   return snapshot.stations.filter(
     (station) => station.city === place.city && station.state === place.state,
   );
+}
+
+/**
+ * Monitors around a point, nearest first, capped so the map stays readable.
+ * A radius in kilometres, not a city boundary: air does not stop at one.
+ */
+function stationsAround(
+  snapshot: SnapshotFile,
+  lat: number,
+  lon: number,
+  radiusKm: number,
+): StationAqi[] {
+  const found = snapshot.stations
+    .map((station) => ({
+      station,
+      km: haversineKm(lat, lon, station.latitude, station.longitude),
+    }))
+    .filter((item) => item.km <= radiusKm)
+    .sort((a, b) => a.km - b.km)
+    .slice(0, 40)
+    .map((item) => item.station);
+  return found.length > 0 ? found : snapshot.stations.slice(0, 1);
 }
 
 function usableCoord(lat: number, lon: number): boolean {

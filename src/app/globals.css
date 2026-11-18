@@ -26,7 +26,8 @@
   --color-muted: var(--muted);
   --color-hairline: var(--hairline);
   --font-sans: var(--font-outfit), sans-serif;
-  --font-numeral: var(--font-fraunces), Georgia, serif;
+  --font-numeral: var(--font-display), var(--font-outfit), sans-serif;
+  --font-heading: var(--font-display), var(--font-outfit), sans-serif;
 }
 
 html {
@@ -133,9 +134,10 @@ button {
 }
 
 .wordmark-name {
+  font-family: var(--font-display), var(--font-outfit), sans-serif;
   font-size: 1.05rem;
-  font-weight: 620;
-  letter-spacing: -0.03em;
+  font-weight: 700;
+  letter-spacing: -0.035em;
   line-height: 1;
 }
 
@@ -216,20 +218,22 @@ button {
 
 .page-title {
   max-width: 16em;
+  font-family: var(--font-display), var(--font-outfit), sans-serif;
   font-size: clamp(2rem, 4vw, 3.15rem);
-  font-weight: 560;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.02;
 }
 
 .ask-title,
 .home-title {
   max-width: 12em;
   margin: 0.45rem 0 0;
-  font-size: clamp(2.2rem, 6.4vw, 3.55rem);
-  font-weight: 560;
-  letter-spacing: -0.04em;
-  line-height: 0.98;
+  font-family: var(--font-display), var(--font-outfit), sans-serif;
+  font-size: clamp(2.3rem, 6.6vw, 3.7rem);
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 0.95;
 }
 
 .lede,
@@ -326,6 +330,41 @@ button {
     );
 }
 
+/* Slow haze drifting behind the number. Decorative, never interactive. */
+.hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -30% -20% -10%;
+  background:
+    radial-gradient(
+      28rem 16rem at 22% 40%,
+      color-mix(in srgb, var(--band) 22%, transparent) 0%,
+      transparent 62%
+    ),
+    radial-gradient(
+      24rem 14rem at 76% 66%,
+      color-mix(in srgb, var(--band) 15%, transparent) 0%,
+      transparent 64%
+    );
+  animation: haze-drift 26s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.hero.is-quiet::after {
+  background: none;
+  animation: none;
+}
+
+@keyframes haze-drift {
+  from {
+    transform: translate3d(-1.5%, 1%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(2.5%, -2%, 0) scale(1.08);
+  }
+}
+
 .hero.is-quiet::before {
   background: none;
 }
@@ -345,10 +384,11 @@ button {
 .hero-name {
   max-width: 18em;
   margin: 0.1rem 0 0;
-  font-size: clamp(1.4rem, 2.4vw, 1.75rem);
+  font-family: var(--font-display), var(--font-outfit), sans-serif;
+  font-size: clamp(1.5rem, 2.6vw, 1.95rem);
   font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
   overflow-wrap: anywhere;
 }
 
@@ -458,14 +498,13 @@ button {
 
 .aqi-numeral {
   margin: 0;
-  font-family: var(--font-fraunces), Georgia, serif;
-  font-style: italic;
-  font-weight: 560;
+  font-family: var(--font-display), var(--font-outfit), sans-serif;
+  font-weight: 700;
   font-synthesis: none;
   font-optical-sizing: auto;
-  font-size: clamp(3.9rem, 15vw, 5.6rem);
-  letter-spacing: -0.05em;
-  line-height: 0.82;
+  font-size: clamp(4.1rem, 16vw, 5.9rem);
+  letter-spacing: -0.06em;
+  line-height: 0.8;
 }
 
 .aqi-missing {
@@ -488,9 +527,10 @@ button {
 
 .band-name {
   margin: 0.6rem 0 0;
-  font-size: clamp(1.6rem, 3.4vw, 2.15rem);
-  font-weight: 560;
-  letter-spacing: -0.04em;
+  font-family: var(--font-display), var(--font-outfit), sans-serif;
+  font-size: clamp(1.65rem, 3.5vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.045em;
   line-height: 1;
 }
 
@@ -702,9 +742,10 @@ button {
 
 .trend-title {
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 640;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display), var(--font-outfit), sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 .trend-sub {
@@ -739,9 +780,9 @@ button {
 
 .trend-stats dd {
   margin: 0.2rem 0 0;
-  font-family: var(--font-fraunces), Georgia, serif;
-  font-style: italic;
+  font-family: var(--font-display), var(--font-outfit), sans-serif;
   font-size: 1.5rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -911,9 +952,10 @@ button {
 
 .rank-title {
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 640;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display), var(--font-outfit), sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 .rank-list,
@@ -1410,9 +1452,10 @@ button {
 
 .section-title {
   margin: 0;
-  font-size: 1.05rem;
-  font-weight: 640;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display), var(--font-outfit), sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 .section-sub {
@@ -1485,11 +1528,10 @@ button {
 }
 
 .tile-value {
-  font-family: var(--font-fraunces), Georgia, serif;
-  font-style: italic;
+  font-family: var(--font-display), var(--font-outfit), sans-serif;
   font-size: 1.6rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 560;
+  font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1;
 }
@@ -1721,9 +1763,9 @@ button {
   border-radius: 999px;
   background: var(--card);
   color: var(--ink);
-  font-family: var(--font-fraunces), Georgia, serif;
-  font-style: italic;
+  font-family: var(--font-display), var(--font-outfit), sans-serif;
   font-size: 1.25rem;
+  font-weight: 700;
   line-height: 1;
   box-shadow: 0 0 0 1px var(--hairline);
 }
@@ -1786,10 +1828,9 @@ button {
 
 .map-chip-read span {
   margin-right: 0.28rem;
-  font-family: var(--font-fraunces), Georgia, serif;
-  font-style: italic;
+  font-family: var(--font-display), var(--font-outfit), sans-serif;
   font-size: 1.45rem;
-  font-weight: 560;
+  font-weight: 700;
   letter-spacing: -0.03em;
 }
 

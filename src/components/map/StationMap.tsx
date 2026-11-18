@@ -208,6 +208,7 @@ function MapCanvas({ frame }: { frame: MapFrame }) {
         if (source && "setData" in source) {
           (source as GeoJSONSource).setData(data);
           map.setPaintProperty("pins", "circle-stroke-color", strokeFor(readTheme()));
+          map.setPaintProperty("pin-labels", "text-halo-color", strokeFor(readTheme()));
         } else if (!map.getLayer("pins")) {
           map.addSource("pins", { type: "geojson", data });
           map.addLayer({
@@ -215,7 +216,7 @@ function MapCanvas({ frame }: { frame: MapFrame }) {
             type: "circle",
             source: "pins",
             layout: {
-              "circle-sort-key": ["get", "active"],
+              "circle-sort-key": ["get", "rank"],
             },
             paint: {
               "circle-radius": [
@@ -223,16 +224,46 @@ function MapCanvas({ frame }: { frame: MapFrame }) {
                 ["linear"],
                 ["zoom"],
                 3.2,
-                5.5,
-                6,
-                7,
-                11,
                 9,
+                6,
+                11,
+                11,
+                14,
               ],
               "circle-color": ["get", "color"],
-              "circle-opacity": ["case", ["==", ["get", "active"], 1], 0, 0.94],
-              "circle-stroke-width": 1.4,
+              "circle-opacity": ["case", ["==", ["get", "active"], 1], 0, 0.96],
+              "circle-stroke-width": 1.5,
               "circle-stroke-color": strokeFor(readTheme()),
+            },
+          });
+          map.addLayer({
+            id: "pin-labels",
+            type: "symbol",
+            source: "pins",
+            filter: ["all", ["!=", ["get", "label"], ""], ["!=", ["get", "active"], 1]],
+            layout: {
+              "text-field": ["get", "label"],
+              "text-font": ["Noto Sans Bold"],
+              "text-size": [
+                "interpolate",
+                ["linear"],
+                ["zoom"],
+                3.2,
+                8,
+                6,
+                9,
+                11,
+                11,
+              ],
+              "text-allow-overlap": false,
+              "text-padding": 2,
+              "text-ignore-placement": false,
+              "symbol-sort-key": ["get", "rank"],
+            },
+            paint: {
+              "text-color": "#ffffff",
+              "text-halo-color": strokeFor(readTheme()),
+              "text-halo-width": 1.1,
             },
           });
         }
@@ -423,9 +454,11 @@ function toCollection(frame: MapFrame): GeoJSON.FeatureCollection {
         name: pin.name,
         place: pin.place,
         aqi: pin.aqi == null ? "" : String(pin.aqi),
+        label: pin.aqi == null ? "" : String(pin.aqi),
         band: pin.band ?? "",
         href: pin.href,
         color: bandAccent(pin.band),
+        rank: pin.aqi == null ? 0 : pin.aqi,
         active: pin.slug === frame.activeSlug ? 1 : 0,
       },
     })),

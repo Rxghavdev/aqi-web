@@ -57,7 +57,7 @@ async function CityReading({ params }: { params: CityParams }) {
   const { slug } = await params;
   const result = await loadCity(slug);
   if (!result) notFound();
-  const { city, stations } = result;
+  const { city, stations, nearby } = result;
   const ordered = sortStations(stations);
   const [first, ...rest] = ordered;
   const value = finiteAqi(city.aqi);
@@ -111,7 +111,7 @@ async function CityReading({ params }: { params: CityParams }) {
           }
           map={
             <StationMap
-              pins={stationPins(stations)}
+              pins={stationPins(nearby)}
               activeSlug={first?.slug}
               hereLabel="This city"
             />

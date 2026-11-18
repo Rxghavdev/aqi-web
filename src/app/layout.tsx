@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, Outfit } from "next/font/google";
+import { Outfit, Space_Grotesk } from "next/font/google";
 import Script from "next/script";
 import { LocationSheet } from "@/components/place/LocationSheet";
 import { Footer } from "@/components/shell/Footer";
@@ -13,12 +13,10 @@ const outfit = Outfit({
   variable: "--font-outfit",
 });
 
-const fraunces = Fraunces({
+const display = Space_Grotesk({
   subsets: ["latin"],
   display: "swap",
-  style: "italic",
-  variable: "--font-fraunces",
-  axes: ["opsz"],
+  variable: "--font-display",
 });
 
 export const metadata: Metadata = {
@@ -34,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${outfit.variable} ${fraunces.variable} h-full`}
+      className={`${outfit.variable} ${display.variable} h-full`}
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col antialiased">
