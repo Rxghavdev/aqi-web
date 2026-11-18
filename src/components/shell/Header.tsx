@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SITE_NAME } from "@/lib/site";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Header() {
   return (
@@ -12,6 +13,7 @@ export function Header() {
         <nav className="site-nav" aria-label="Primary">
           <Link href="/#cities">Cities</Link>
           <Link href="/methodology">Methodology</Link>
+          <ThemeToggle />
         </nav>
       </div>
     </header>

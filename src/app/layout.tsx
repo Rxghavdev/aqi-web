@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Outfit } from "next/font/google";
+import Script from "next/script";
 import { LocationSheet } from "@/components/place/LocationSheet";
 import { Footer } from "@/components/shell/Footer";
 import { Header } from "@/components/shell/Header";
@@ -34,8 +35,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${outfit.variable} ${fraunces.variable} h-full`}
+      suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col antialiased">
+        <Script id="aqi-desk-theme" strategy="beforeInteractive">
+          {`(function(){try{var k="aqi-desk-theme";var t=localStorage.getItem(k);if(t!=="light"&&t!=="dark"){t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme="light"}})();`}
+        </Script>
         <a className="skip-link" href="#content">
           Skip to content
         </a>
@@ -43,7 +48,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <main
           id="content"
           tabIndex={-1}
-          className="mx-auto w-full max-w-6xl flex-1 px-5 py-5 md:px-10 md:py-8"
+          className="site-frame flex-1 px-5 py-5 md:px-8 md:py-8"
         >
           {children}
         </main>

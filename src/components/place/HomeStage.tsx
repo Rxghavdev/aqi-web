@@ -2,15 +2,10 @@
 
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import Link from "next/link";
-import { bandAccent } from "@/lib/aqi";
 import type { PlaceReport } from "@/lib/types";
-import { AqiFigure } from "@/components/reading/AqiFigure";
-import { CityAverageLink } from "@/components/reading/CityAverageLink";
-import { heroClass, heroStyle } from "@/components/reading/hero";
-import { meterRows, PollutantMeters } from "@/components/reading/PollutantMeters";
-import { SpikeStrip } from "@/components/reading/SpikeStrip";
-import { officialStation, pollutantLabel, stationPath } from "@/components/reading/text";
+import { StationMap } from "@/components/map/StationMap";
+import { bandAccent } from "@/lib/aqi";
+import { PlaceReading } from "@/components/place/PlaceReading";
 import { PlaceSearch } from "@/components/search/PlaceSearch";
 import { TrendChart } from "@/components/trend/TrendChart";
 import { readSavedPoint, type SavedPoint } from "./storage";
@@ -25,7 +20,13 @@ export function HomeStage({ ranking }: { ranking: ReactNode }) {
   return (
     <div className="desk">
       <div className="desk-main">
-        {point === undefined ? <HomeSkeleton /> : point ? <NearestReading point={point} /> : <AskHome />}
+        {point === undefined ? (
+          <HomeSkeleton />
+        ) : point ? (
+          <NearestReading point={point} search={<PlaceSearch />} />
+        ) : (
+          <AskHome />
+        )}
       </div>
       {ranking}
     </div>
@@ -34,10 +35,17 @@ export function HomeStage({ ranking }: { ranking: ReactNode }) {
 
 function HomeSkeleton() {
   return (
-    <div className="hero is-quiet" aria-busy="true">
-      <p className="sr-only">Loading the nearest station.</p>
-      <div className="skeleton-numeral" aria-hidden="true" />
-      <div className="skeleton-line" aria-hidden="true" />
+    <div className="stage" aria-busy="true">
+      <div className="stage-read">
+        <div className="reading-card">
+          <div className="hero is-quiet">
+            <p className="sr-only">Loading the nearest station.</p>
+            <div className="skeleton-numeral" aria-hidden="true" />
+            <div className="skeleton-line" aria-hidden="true" />
+          </div>
+        </div>
+      </div>
+      <div className="stage-map" />
     </div>
   );
 }
@@ -45,14 +53,27 @@ function HomeSkeleton() {
 function AskHome() {
   return (
     <div className="ask-home">
-      <p className="kicker">India&apos;s official air number</p>
-      <h1 className="ask-title">The monitor nearest you, on India&apos;s scale.</h1>
-      <PlaceSearch />
+      <div className="ask-copy">
+        <p className="kicker">India&apos;s official air number</p>
+        <h1 className="ask-title">The monitor nearest you, on India&apos;s scale.</h1>
+        <p className="lede">
+          One number the government publishes. Not a guess from your street, and
+          not a model dressed up as official.
+        </p>
+        <PlaceSearch />
+      </div>
+      <StationMap pins={[]} frame="ask-map" />
     </div>
   );
 }
 
-function NearestReading({ point }: { point: SavedPoint }) {
+function NearestReading({
+  point,
+  search,
+}: {
+  point: SavedPoint;
+  search: ReactNode;
+}) {
   const [report, setReport] = useState<PlaceReport | null | "loading" | "error">("loading");
 
   useEffect(() => {
@@ -82,77 +103,26 @@ function NearestReading({ point }: { point: SavedPoint }) {
     };
   }, [point.lat, point.lon]);
 
-  if (report === "loading") {
-    return (
-      <div className="hero is-quiet" aria-busy="true">
-        <p className="sr-only">Loading the nearest station.</p>
-        <div className="skeleton-numeral" aria-hidden="true" />
-        <div className="skeleton-line" aria-hidden="true" />
-      </div>
-    );
-  }
+  if (report === "loading") return <HomeSkeleton />;
 
   const nearest = report && report !== "error" ? report.nearest : null;
   if (!report || report === "error" || !nearest) {
-    return (
-      <div className="ask-home">
-        <p className="kicker">India&apos;s official air number</p>
-        <h1 className="ask-title">The monitor nearest you, on India&apos;s scale.</h1>
-        <p className="lede">No CPCB reading is available for this location yet.</p>
-        <PlaceSearch />
-      </div>
-    );
+    return <AskHome />;
   }
 
-  const official = officialStation(nearest);
-  const meters = meterRows(nearest.pollutants);
   return (
-    <>
-      <div className="reading-top">
-        <section className={heroClass(official.band)} style={heroStyle(official.band)}>
-          <p className="hero-kicker">
-            {nearest.city}
-            <span aria-hidden="true"> · </span>
-            {nearest.state}
-          </p>
-          <h1 className="hero-name">
-            <Link href={stationPath(nearest.slug)}>{nearest.name}</Link>
-          </h1>
-          <AqiFigure
-            aqi={official.aqi}
-            band={official.band}
-            updatedAt={nearest.updatedAt}
-            missing="words"
-          />
-        </section>
-        <div className="reading-side">
-          <section className="paper-card">
-            {report.distanceKm != null && Number.isFinite(report.distanceKm) ? (
-              <p className="hero-distance">{report.distanceKm.toFixed(1)} km from you</p>
-            ) : null}
-            {nearest.prominent ? <p>Set by {pollutantLabel(nearest.prominent)}</p> : null}
-            {report.city ? (
-              <CityAverageLink city={report.city} />
-            ) : (
-              <p className="fact-row">
-                <Link className="fact-link" href={stationPath(nearest.slug)}>
-                  Open this station
-                </Link>
-              </p>
-            )}
-          </section>
-        </div>
-      </div>
-      {meters.length > 0 ? (
-        <section className="paper-card">
-          <PollutantMeters pollutants={nearest.pollutants} />
-          <p className="meters-note">These are index points, not concentrations.</p>
-        </section>
-      ) : null}
-      <SpikeStrip spike={report.spike} />
-      <TrendChart kind="station" slug={nearest.slug} accent={bandAccent(official.band)} />
-      <PlaceSearch />
-    </>
+    <PlaceReading
+      report={report}
+      point={{ lat: point.lat, lon: point.lon }}
+      search={search}
+      trend={
+        <TrendChart
+          kind="station"
+          slug={nearest.slug}
+          accent={bandAccent(nearest.band)}
+        />
+      }
+    />
   );
 }
 

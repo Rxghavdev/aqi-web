@@ -82,9 +82,25 @@ export function TrendChart({
   const placed = status === "ready" ? layout(official, model) : null;
   const labels = placed ? axisLabels(placed.official, placed.model) : null;
 
+  const latest = official.length > 0 ? official[official.length - 1] : null;
+  const firstOfficial = official.length > 0 ? official[0] : null;
+  const modelSpan =
+    model.length > 1
+      ? `${formatDay(model[0].date)} – ${formatDay(model[model.length - 1].date)}`
+      : null;
+
   return (
     <section className="trend-card" aria-busy={status === "loading" || undefined}>
-      <div className="trend-switch" role="group" aria-label="Trend range">
+      <div className="trend-head">
+        <div>
+          <h2 className="trend-title">History</h2>
+          <p className="trend-sub">
+            {modelSpan
+              ? `Model days ${modelSpan}. Government readings begin where CPCB began publishing here.`
+              : "Official CPCB readings, kept as they were published."}
+          </p>
+        </div>
+        <div className="trend-switch" role="group" aria-label="Trend range">
         <button
           type="button"
           aria-pressed={range === "1m"}
@@ -99,7 +115,31 @@ export function TrendChart({
         >
           6 months
         </button>
+        </div>
       </div>
+      <dl className="trend-stats">
+        <div>
+          <dt>Latest official</dt>
+          <dd>
+            {latest ? Math.round(latest.aqi) : "—"}
+            <span>{latest ? formatDay(latest.date) : "No reading yet"}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Official points</dt>
+          <dd>
+            {official.length}
+            <span>{range === "1m" ? "Last 30 days" : "Last 6 months"}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Model days</dt>
+          <dd>
+            {model.length}
+            <span>{firstOfficial ? "Not government data" : "Estimate only"}</span>
+          </dd>
+        </div>
+      </dl>
       {status === "loading" ? (
         <div className="trend-skeleton" aria-hidden="true">
           <span className="sr-only">Loading the trend.</span>

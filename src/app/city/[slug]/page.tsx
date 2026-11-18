@@ -3,11 +3,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdSlot } from "@/components/ads/AdSlot";
-import { AqiFigure } from "@/components/reading/AqiFigure";
+import { StationMap } from "@/components/map/StationMap";
+import { stationPins } from "@/components/map/pins";
+import { AqiFigure, HeroHead } from "@/components/reading/AqiFigure";
+import { BandScale } from "@/components/reading/BandScale";
+import { FactCard } from "@/components/reading/FactCard";
 import { heroClass, heroStyle } from "@/components/reading/hero";
 import { loadCity } from "@/components/reading/load";
-import { meterRows, PollutantMeters } from "@/components/reading/PollutantMeters";
+import { PollutantBoard } from "@/components/reading/PollutantBoard";
 import { ReadingLink } from "@/components/reading/ReadingLink";
+import { ReadingStage } from "@/components/reading/ReadingStage";
 import { ReadingSkeleton } from "@/components/reading/ReadingSkeleton";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { TrendChart } from "@/components/trend/TrendChart";
@@ -55,51 +60,82 @@ async function CityReading({ params }: { params: CityParams }) {
   const { city, stations } = result;
   const ordered = sortStations(stations);
   const [first, ...rest] = ordered;
-  const meters = first ? meterRows(first.pollutants) : [];
+  const value = finiteAqi(city.aqi);
+  const spread = spreadOf(ordered);
 
   return (
     <article className="desk">
       <JsonLd data={cityJsonLd(city)} />
       <div className="desk-main">
-        <div className="reading-top">
-          <section className={heroClass(city.band)} style={heroStyle(city.band)}>
-            <p className="hero-kicker">{city.state}</p>
-            <h1 className="hero-name">{city.city}</h1>
-            <AqiFigure
-              aqi={finiteAqi(city.aqi)}
-              band={city.band}
-              updatedAt={city.updatedAt}
-              missing="dash"
-            />
-          </section>
-          <div className="reading-side">
-            <section className="paper-card">
-              <p>
-                Average of {city.stationsReporting} of {city.stationsTotal} stations.
-              </p>
-              <p>CPCB averages the stations in a city. One monitor can be worse.</p>
-              {city.prominent ? <p>Set by {pollutantLabel(city.prominent)}</p> : null}
-              {first ? (
-                <p className="fact-row">
-                  <Link className="fact-link" href={stationPath(first.slug)}>
-                    Worst monitor: {first.name}
-                  </Link>
-                </p>
-              ) : null}
+        <ReadingStage
+          poster={
+            <section className={heroClass(city.band)} style={heroStyle(city.band)}>
+              <HeroHead kicker={city.state} title={city.city} />
+              <AqiFigure
+                aqi={value}
+                band={city.band}
+                updatedAt={city.updatedAt}
+                missing="dash"
+              />
+              <BandScale band={city.band} value={value} />
             </section>
-          </div>
-        </div>
-        {first && meters.length > 0 ? (
-          <section className="paper-card">
-            <p className="meters-source">From the worst monitor</p>
-            <PollutantMeters pollutants={first.pollutants} />
+          }
+          facts={
+            <FactCard
+              facts={[
+                {
+                  label: "Stations",
+                  value: `${city.stationsReporting} of ${city.stationsTotal} reporting`,
+                },
+                {
+                  label: "Set by",
+                  value: city.prominent ? pollutantLabel(city.prominent) : "—",
+                },
+                {
+                  label: "Worst monitor",
+                  value: first ? (
+                    <Link className="fact-link" href={stationPath(first.slug)}>
+                      {first.name}
+                    </Link>
+                  ) : (
+                    "—"
+                  ),
+                },
+                {
+                  label: "Spread",
+                  value: spread ? `${spread}` : "—",
+                },
+              ]}
+              note="CPCB averages the stations in a city. One monitor can be worse than the average."
+            />
+          }
+          map={
+            <StationMap
+              pins={stationPins(stations)}
+              activeSlug={first?.slug}
+              hereLabel="This city"
+            />
+          }
+        />
+        {first ? (
+          <section className="section">
+            <div className="section-head">
+              <h2 className="section-title">Inside the worst monitor</h2>
+              <p className="section-sub">
+                {first.name}. Open a tile for what the pollutant is.
+              </p>
+            </div>
+            <PollutantBoard pollutants={first.pollutants} />
             <p className="meters-note">These are index points, not concentrations.</p>
           </section>
         ) : null}
         <TrendChart kind="city" slug={city.slug} accent={bandAccent(city.band)} />
       </div>
       <div className="rank-panel">
-        <h2 className="rank-title">Stations</h2>
+        <div className="section-head">
+          <h2 className="rank-title">Stations</h2>
+          <p className="section-sub">Worst first. Ties go alphabetically.</p>
+        </div>
         {first ? (
           <div className="rank-list">
             <ReadingLink
@@ -134,6 +170,16 @@ async function CityReading({ params }: { params: CityParams }) {
       </div>
     </article>
   );
+}
+
+function spreadOf(stations: Array<{ aqi: number | null; insufficient: boolean }>): string | null {
+  const values = stations
+    .filter((station) => !station.insufficient && station.aqi != null)
+    .map((station) => station.aqi as number);
+  if (values.length < 2) return null;
+  const low = Math.min(...values);
+  const high = Math.max(...values);
+  return `${low}–${high}`;
 }
 
 function cityJsonLd(city: CityAqi): Record<string, unknown> {

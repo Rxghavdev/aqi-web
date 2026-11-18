@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { hookLine } from "@/lib/voice";
 import type { Band } from "@/lib/types";
+import { AqiDial } from "./AqiDial";
 import { aqiName, bandLabel, finiteAqi, formatStamp, stampIsToday } from "./text";
 
 export function AqiFigure({
@@ -21,20 +23,48 @@ export function AqiFigure({
 
   return (
     <div className="aqi-figure">
-      <p className={words ? "aqi-missing" : "aqi-numeral"}>
-        <span aria-hidden="true">{words ? "No official AQI" : (value ?? "—")}</span>
-        <span className="sr-only">{aqiName(value, shown)}</span>
-      </p>
+      <AqiDial value={value} band={shown}>
+        {words ? (
+          <p className="aqi-missing">No official AQI</p>
+        ) : (
+          <>
+            <p className="aqi-numeral">
+              <span aria-hidden="true">{value ?? "—"}</span>
+              <span className="sr-only">{aqiName(value, shown)}</span>
+            </p>
+            <p className="dial-unit">India scale · 0–500</p>
+          </>
+        )}
+      </AqiDial>
+
       <p className="band-name">{bandLabel(shown ?? (words ? null : band))}</p>
       <p className="hook-line">{hookLine(shown)}</p>
+
       <p className="live-row">
         {live ? <span className="live-dot" aria-hidden="true" /> : null}
         <span>{live ? "Live" : "Updated"}</span>
-        <span className="live-time">
-          {stamp ?? "No update time was published"}
-        </span>
+        <span className="live-time">{stamp ?? "No update time was published"}</span>
       </p>
       <p className="scale-line">CPCB National Air Quality Index</p>
     </div>
+  );
+}
+
+export function HeroHead({
+  kicker,
+  href,
+  title,
+}: {
+  kicker: string;
+  href?: string;
+  title: string;
+}) {
+  return (
+    <header className="hero-head">
+      <p className="hero-kicker">{kicker}</p>
+      <h1 className="hero-name">
+        {href ? <Link href={href}>{title}</Link> : title}
+      </h1>
+    </header>
   );
 }

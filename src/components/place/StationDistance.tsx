@@ -7,9 +7,11 @@ import { readSavedPoint } from "./storage";
 export function StationDistance({
   latitude,
   longitude,
+  prefix = "",
 }: {
   latitude: number;
   longitude: number;
+  prefix?: string;
 }) {
   const [km, setKm] = useState<number | null>(null);
 
@@ -20,5 +22,10 @@ export function StationDistance({
   }, [latitude, longitude]);
 
   if (km == null) return null;
-  return <p className="hero-distance">{km.toFixed(1)} km from you</p>;
+  return (
+    <span className="fact-inline">
+      {prefix}
+      {km.toFixed(1)} km from you
+    </span>
+  );
 }

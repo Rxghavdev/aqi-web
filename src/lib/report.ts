@@ -11,6 +11,16 @@ import type {
   StationAqi,
 } from "./types.ts";
 
+export type MapCityPoint = {
+  slug: string;
+  name: string;
+  place: string;
+  lat: number;
+  lon: number;
+  aqi: number | null;
+  band: CityAqi["band"];
+};
+
 /**
  * Public data API for the UI.
  * These functions read the CPCB snapshot on disk. They do not download it.
@@ -40,6 +50,44 @@ export async function listCities(): Promise<CityAqi[]> {
   const { snapshot } = await readSnapshot();
   if (!snapshot) return [];
   return snapshot.cities.slice().sort(compareCities);
+}
+
+/** City averages placed at the mean of their station coordinates. */
+export async function listMapCities(): Promise<MapCityPoint[]> {
+  const { snapshot } = await readSnapshot();
+  if (!snapshot) return [];
+  const grouped = new Map<string, { lat: number; lon: number; count: number }>();
+  for (const station of snapshot.stations) {
+    if (!usableCoord(station.latitude, station.longitude)) continue;
+    const key = `${station.city}\0${station.state}`;
+    const current = grouped.get(key);
+    if (current) {
+      current.lat += station.latitude;
+      current.lon += station.longitude;
+      current.count += 1;
+    } else {
+      grouped.set(key, {
+        lat: station.latitude,
+        lon: station.longitude,
+        count: 1,
+      });
+    }
+  }
+  const points: MapCityPoint[] = [];
+  for (const city of snapshot.cities) {
+    const group = grouped.get(`${city.city}\0${city.state}`);
+    if (!group || group.count === 0) continue;
+    points.push({
+      slug: city.slug,
+      name: city.city,
+      place: city.state,
+      lat: roundCoord(group.lat / group.count),
+      lon: roundCoord(group.lon / group.count),
+      aqi: city.aqi,
+      band: city.band,
+    });
+  }
+  return points;
 }
 
 export async function getCity(
@@ -295,6 +343,20 @@ function stationsIn(
   return snapshot.stations.filter(
     (station) => station.city === place.city && station.state === place.state,
   );
+}
+
+function usableCoord(lat: number, lon: number): boolean {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lon) &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lon) <= 180 &&
+    !(lat === 0 && lon === 0)
+  );
+}
+
+function roundCoord(value: number): number {
+  return Math.round(value * 10000) / 10000;
 }
 
 function centroid(
