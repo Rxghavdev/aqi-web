@@ -1,21 +1,24 @@
 import type { Band } from "./types";
 
-/** Short line under the official number. Warm, specific, not a slogan deck. */
+/**
+ * One calm, factual line under the AQI, one per band. No exclamation marks and
+ * no medical claims; the band name and the number carry the detail.
+ */
 export function hookLine(band: Band | null): string {
   switch (band) {
     case "Good":
-      return "Step out. India's official number says the air is on your side.";
+      return "Clean air. A good day to be outside.";
     case "Satisfactory":
-      return "Mostly fine. If your lungs are fussy, take the long effort easier.";
+      return "Fine for most people. Very sensitive people may notice it.";
     case "Moderate":
-      return "A walk is fine. Save the long run if your chest complains.";
+      return "Fine for most. Sensitive groups may feel it on long outdoor efforts.";
     case "Poor":
-      return "Keep the long stuff indoors. This is the official reading, not a guess.";
+      return "Keep the long stuff indoors. Short trips outside are fine.";
     case "Very Poor":
-      return "Mask up if you have to be out. The government monitors are in the red.";
+      return "Time outdoors adds up at this level. Keep it short.";
     case "Severe":
-      return "Stay in. This is severe on India's own scale.";
+      return "Severe air. Stay indoors where you can.";
     default:
-      return "This monitor has not published enough pollutants for an official number.";
+      return "This station has not reported enough pollutants for an AQI.";
   }
 }

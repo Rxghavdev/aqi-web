@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
+import { Icon, type IconName } from "./icons";
 
-export type Fact = { label: string; value: ReactNode };
+export type Fact = { label: string; value: ReactNode; icon?: IconName };
 
 /**
- * The quiet card beside the number. Label/value pairs so a glance
- * answers "how far", "from what", "compared with what".
+ * Small icon + value tiles beside the number. Each tile answers one
+ * question at a glance: how many stations, set by what, how far.
  */
 export function FactCard({
   facts,
@@ -16,17 +17,20 @@ export function FactCard({
   children?: ReactNode;
 }) {
   return (
-    <section className="paper-card fact-card">
-      <dl className="fact-grid">
+    <section className="facts" aria-label="Key facts">
+      <dl className="facts-grid">
         {facts.map((fact) => (
           <div key={fact.label} className="fact">
+            <span className="fact-icon">
+              <Icon name={fact.icon ?? "layers"} size={18} />
+            </span>
             <dt className="fact-label">{fact.label}</dt>
             <dd className="fact-value">{fact.value}</dd>
           </div>
         ))}
       </dl>
-      {children}
       {note ? <p className="fact-note">{note}</p> : null}
+      {children}
     </section>
   );
 }

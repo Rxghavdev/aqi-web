@@ -1,5 +1,6 @@
 import { indiaAqiFromConcentration } from "../aqi.ts";
 import type { TrendPoint } from "../history.ts";
+import { logWarn } from "../log.ts";
 
 const ENDPOINT = "https://air-quality-api.open-meteo.com/v1/air-quality";
 
@@ -19,13 +20,22 @@ export async function fetchModelTrend(
   url.searchParams.set("start_date", start);
   url.searchParams.set("end_date", end);
 
-  const response = await fetch(url, { signal: AbortSignal.timeout(12_000) });
-  if (!response.ok) return [];
-  const body = (await response.json()) as {
-    hourly?: { time?: unknown[]; pm2_5?: unknown[] };
-  };
-  const times = body.hourly?.time ?? [];
-  const values = body.hourly?.pm2_5 ?? [];
+  const response = await fetch(url, {
+    cache: "no-store",
+    signal: AbortSignal.timeout(12_000),
+  });
+  if (!response.ok) {
+    await response.body?.cancel();
+    logWarn("upstream.failed", { source: "open-meteo-trend", status: response.status });
+    return [];
+  }
+  const body: unknown = await response.json();
+  const hourly =
+    body && typeof body === "object"
+      ? (body as { hourly?: { time?: unknown; pm2_5?: unknown } }).hourly
+      : undefined;
+  const times = Array.isArray(hourly?.time) ? hourly.time : [];
+  const values = Array.isArray(hourly?.pm2_5) ? hourly.pm2_5 : [];
   const buckets = new Map<string, number[]>();
   for (let index = 0; index < times.length; index += 1) {
     const stamp = times[index];

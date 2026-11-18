@@ -2,20 +2,30 @@
 
 export type ThemeName = "light" | "dark";
 
-const KEY = "aqi-desk-theme";
+export const THEME_KEY = "hawa-theme";
+/** Read-only fallback so visitors keep the choice they made before the rename. */
+const LEGACY_THEME_KEY = "aqi-desk-theme";
 
 export function readTheme(): ThemeName {
   if (typeof document === "undefined") return "light";
   return document.documentElement.dataset.theme === "dark" ? "dark" : "light";
 }
 
-export function preferredTheme(): ThemeName {
+function storedTheme(): ThemeName | null {
   try {
-    const stored = localStorage.getItem(KEY);
-    if (stored === "dark" || stored === "light") return stored;
+    const current = localStorage.getItem(THEME_KEY);
+    if (current === "dark" || current === "light") return current;
+    const legacy = localStorage.getItem(LEGACY_THEME_KEY);
+    if (legacy === "dark" || legacy === "light") return legacy;
   } catch {
     /* private mode */
   }
+  return null;
+}
+
+export function preferredTheme(): ThemeName {
+  const stored = storedTheme();
+  if (stored) return stored;
   if (typeof window === "undefined") return "light";
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
@@ -30,7 +40,7 @@ export function toggleTheme(): ThemeName {
   const next: ThemeName = readTheme() === "dark" ? "light" : "dark";
   document.documentElement.dataset.theme = next;
   try {
-    localStorage.setItem(KEY, next);
+    localStorage.setItem(THEME_KEY, next);
   } catch {
     /* private mode */
   }

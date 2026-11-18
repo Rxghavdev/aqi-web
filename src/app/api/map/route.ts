@@ -1,11 +1,17 @@
 import { connection } from "next/server";
+import { CACHE, jsonCached, route } from "@/lib/api";
 import { listMapCities } from "@/lib/report";
 
-export async function GET() {
-  await connection();
-  const cities = await listMapCities();
-  return Response.json(
-    { cities },
-    { headers: { "Cache-Control": "public, max-age=300" } },
-  );
-}
+export const GET = route(
+  "map",
+  { limit: 30, windowMs: 60_000 },
+  async (request) => {
+    await connection();
+    const cities = await listMapCities();
+    return jsonCached(
+      request,
+      { cities },
+      cities.length > 0 ? CACHE.list : CACHE.brief,
+    );
+  },
+);

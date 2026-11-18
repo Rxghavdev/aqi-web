@@ -1,51 +1,167 @@
 import type { Metadata } from "next";
+import { Callout, PageHeader, Section, Toc, type TocItem } from "@/components/pages/blocks";
+import {
+  BandChips,
+  CityFlow,
+  SeriesLegend,
+  StationExample,
+} from "@/components/pages/illustrations";
+import { SITE_NAME } from "@/lib/site";
+
+const LAST_UPDATED = "18 November 2026";
 
 export const metadata: Metadata = {
   title: "Methodology",
-  description:
-    "How AQI Desk uses India's National Air Quality Index from CPCB stations.",
+  description: `How ${SITE_NAME} turns CPCB station readings into a station AQI, a city AQI and a daily history, and how often the data refreshes.`,
+  alternates: { canonical: "/methodology" },
 };
+
+const SECTIONS: readonly TocItem[] = [
+  { id: "scale", label: "The scale" },
+  { id: "station", label: "Station AQI" },
+  { id: "city", label: "City AQI" },
+  { id: "estimate", label: "History and Estimate" },
+  { id: "freshness", label: "Freshness" },
+  { id: "source", label: "Source" },
+];
 
 export default function MethodologyPage() {
   return (
-    <article className="copy">
-      <h1 className="page-title">Methodology</h1>
-      <div className="copy-body">
-        <p>
-          The number on AQI Desk is India&apos;s National Air Quality Index, as
-          published by the Central Pollution Control Board.
-        </p>
-        <p>
-          CPCB turns each pollutant into a sub-index. The worst sub-index is the
-          station&apos;s AQI. A station number is published only when at least
-          three pollutants are present, including PM2.5 or PM10.
-        </p>
-        <p>
-          Most pollutants use a 24-hour average. CO and ozone use 8 hours, so a
-          spike this hour shows up slowly.
-        </p>
-        <p>
-          A city figure is the average of the stations in that city that published
-          an official AQI. One monitor can be worse than the city number.
-        </p>
-        <p>
-          On a station page, the sub-index list is index points on that same scale.
-          It is not a list of concentrations.
-        </p>
-        <p>
-          When the air is rising this hour, a separate strip says so. That figure
-          comes from an hourly weather model, converted with the same India
-          breakpoints. It is not the official number, and it does not replace it.
-        </p>
-        <p>
-          The bands are 0–50 Good, 51–100 Satisfactory, 101–200 Moderate, 201–300
-          Poor, 301–400 Very Poor, and 401–500 Severe. This is not medical advice.
-        </p>
-        <p>
-          Readings come from the Central Pollution Control Board via data.gov.in.
-          This is not a government website.
-        </p>
+    <div className="pg">
+      <PageHeader
+        eyebrow="Methodology"
+        title="How Hawa gets its numbers"
+        lede="Every figure follows the CPCB National Air Quality Index. This page shows how a reading becomes a station AQI, a city AQI and a trend line."
+        meta={`Last updated ${LAST_UPDATED}`}
+      />
+
+      <div className="pg-layout">
+        <Toc items={SECTIONS} />
+
+        <div className="pg-prose">
+          <Section id="scale" title="The scale">
+            <p>
+              The National Air Quality Index runs from 0 to 500 and is split into six
+              bands. The higher the number, the more polluted the air. Colours and
+              wording on Hawa follow the band.
+            </p>
+            <BandChips />
+            <p>
+              The health line under each reading is general guidance for that band.
+              For advice about your own health, ask your doctor.
+            </p>
+          </Section>
+
+          <Section id="station" title="Station AQI">
+            <p>
+              A CPCB station measures up to eight pollutants: PM2.5, PM10, NO2, SO2,
+              CO, ozone, NH3 and lead. Each one is turned into a sub-index on the same
+              0 to 500 scale. The station AQI is the highest sub-index, and the
+              pollutant behind it is the one that sets the number.
+            </p>
+            <StationExample />
+            <p>
+              A station gets an AQI only when at least three pollutants have a value,
+              and at least one of them is PM2.5 or PM10. Otherwise the station shows
+              no AQI.
+            </p>
+            <p>
+              CPCB computes sub-indices from 24-hour averages. CO and ozone use 8-hour
+              averages. A sudden spike therefore takes a few hours to show in the
+              number.
+            </p>
+            <Callout title="Sub-indices are index points">
+              The pollutant tiles on a station page show index points from 0 to 500.
+              They are not concentrations in µg/m³.
+            </Callout>
+          </Section>
+
+          <Section id="city" title="City AQI">
+            <p>
+              A city AQI is the mean of the AQIs of its stations, rounded to the
+              nearest whole number. Only stations that have an AQI count. A station
+              without enough pollutants is left out, and the city page says how many
+              stations are reporting.
+            </p>
+            <CityFlow />
+            <p>
+              The city number is an average, so the worst station is often higher.
+              City pages list every station, worst first.
+            </p>
+            <p>
+              A station reading describes the air at that station, not on a particular
+              street. When a page shows a distance, it is the distance to that
+              station.
+            </p>
+          </Section>
+
+          <Section id="estimate" title="History and Estimate">
+            <p>
+              Each city and station has a history chart. It draws two series, and they
+              are never mixed into one number.
+            </p>
+            <SeriesLegend />
+            <p>
+              Official values are saved once a day for every place: the latest CPCB
+              figure of that day, by India time. Hawa&apos;s own records start the day
+              it first saw a place, so a new chart begins short.
+            </p>
+            <p>
+              The Estimate series fills the days before that. It comes from the
+              Open-Meteo air quality model: hourly PM2.5 at the place&apos;s
+              position, averaged over each day and converted to the same 0 to 500
+              scale with the CPCB PM2.5 breakpoints. It covers PM2.5 only, so it can
+              sit below an Official value that another pollutant set.
+            </p>
+            <p>
+              Station and city pages can also show a note that the air is rising this
+              hour. It appears when the hourly model, using PM2.5 and PM10, is at
+              least 50 points above the Official AQI. It is an Estimate and does not
+              change the Official number.
+            </p>
+          </Section>
+
+          <Section id="freshness" title="Freshness">
+            <dl className="pg-facts">
+              <div>
+                <dt>Station readings</dt>
+                <dd>CPCB publishes hourly. Each page shows the time of the latest reading, in IST.</dd>
+              </div>
+              <div>
+                <dt>Hawa&apos;s copy</dt>
+                <dd>Refreshed about every 30 minutes while the site is in use.</dd>
+              </div>
+              <div>
+                <dt>Weather</dt>
+                <dd>Current conditions from Open-Meteo, kept for up to 15 minutes.</dd>
+              </div>
+              <div>
+                <dt>History</dt>
+                <dd>One Official value per place per day. The Estimate series refreshes daily.</dd>
+              </div>
+            </dl>
+            <p>
+              If CPCB is running behind, the page says so and keeps showing the last
+              reading it has.
+            </p>
+          </Section>
+
+          <Section id="source" title="Source">
+            <p className="pg-credit">
+              Data: Central Pollution Control Board (CPCB) via data.gov.in
+            </p>
+            <p>
+              Weather and the Estimate series come from{" "}
+              <a href="https://open-meteo.com/">Open-Meteo</a>. To read about the
+              index itself, see the{" "}
+              <a href="https://airquality.cpcb.gov.in/AQI_India/">
+                CPCB AQI pages
+              </a>
+              .
+            </p>
+          </Section>
+        </div>
       </div>
-    </article>
+    </div>
   );
 }

@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LOC_KEY, writePoint, writeSkip } from "./storage";
 
-const DENIED = "Location stayed off. Search for your city instead.";
+const DENIED = "Location is off. Search for your city instead.";
 
 export function LocationSheet() {
   const router = useRouter();
@@ -49,9 +49,9 @@ export function LocationSheet() {
       if (event.key !== "Tab") return;
       const sheet = sheetRef.current;
       if (!sheet) return;
-      const nodes = [...sheet.querySelectorAll<HTMLElement>("button, a, input, [href]")].filter(
-        (node) => !node.hasAttribute("disabled"),
-      );
+      const nodes = [
+        ...sheet.querySelectorAll<HTMLElement>("button, a, input, [href]"),
+      ].filter((node) => !node.hasAttribute("disabled"));
       if (nodes.length === 0) return;
       const first = nodes[0];
       const last = nodes[nodes.length - 1];
@@ -69,7 +69,8 @@ export function LocationSheet() {
       window.cancelAnimationFrame(frame);
       document.removeEventListener("keydown", onKey);
       body.style.overflow = previousOverflow;
-      if (!searching.current && previous instanceof HTMLElement) previous.focus();
+      if (!searching.current && previous instanceof HTMLElement)
+        previous.focus();
       searching.current = false;
     };
   }, [open]);
@@ -84,7 +85,7 @@ export function LocationSheet() {
     writeSkip();
     setOpen(false);
     window.setTimeout(() => {
-      window.dispatchEvent(new Event("aqi-desk-focus-search"));
+      window.dispatchEvent(new Event("hawa-focus-search"));
     }, 40);
   }
 
@@ -112,7 +113,9 @@ export function LocationSheet() {
           writeSkip();
           return;
         }
-        setNote("Location could not be read. Search for your city instead.");
+        setNote(
+          "We couldn't read your location. Search for your city instead.",
+        );
       },
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
     );
@@ -131,16 +134,22 @@ export function LocationSheet() {
         aria-labelledby={titleId}
       >
         <div className="loc-top">
-          <p className="kicker">WHERE ARE YOU BREATHING</p>
-          <button ref={closeRef} type="button" className="loc-close" onClick={skip}>
+          <p className="kicker">Your location</p>
+          <button
+            ref={closeRef}
+            type="button"
+            className="loc-close"
+            onClick={skip}
+          >
             Close
           </button>
         </div>
         <h2 id={titleId} className="loc-title">
-          We&apos;ll find the nearest government station.
+          Find the station nearest you.
         </h2>
         <p className="loc-body">
-          Not a guess from your street. The official monitor, and how far it is.
+          Share your location and we show the closest station and how far away
+          it is.
         </p>
         {note ? (
           <p className="loc-note" role="status">
@@ -157,7 +166,7 @@ export function LocationSheet() {
           Use my location
         </button>
         <button type="button" className="loc-secondary" onClick={searchInstead}>
-          I&apos;ll search
+          Search instead
         </button>
       </div>
     </div>

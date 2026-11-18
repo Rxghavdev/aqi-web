@@ -1,9 +1,15 @@
 import Link from "next/link";
-import { hookLine } from "@/lib/voice";
 import type { Band } from "@/lib/types";
 import { AqiDial } from "./AqiDial";
 import { Atmosphere } from "./Atmosphere";
-import { aqiName, bandLabel, finiteAqi, formatStamp, stampIsToday } from "./text";
+import {
+  aqiName,
+  bandLabel,
+  bandNote,
+  finiteAqi,
+  formatStamp,
+  stampIsToday,
+} from "./text";
 
 export function AqiFigure({
   aqi,
@@ -27,7 +33,7 @@ export function AqiFigure({
       <Atmosphere band={shown} />
       <AqiDial value={value} band={shown}>
         {words ? (
-          <p className="aqi-missing">No official AQI</p>
+          <p className="aqi-missing">No AQI</p>
         ) : (
           <>
             <p className="aqi-numeral">
@@ -39,18 +45,21 @@ export function AqiFigure({
         )}
       </AqiDial>
 
-      <p className="band-name">{bandLabel(shown ?? (words ? null : band))}</p>
-      <p className="hook-line">{hookLine(shown)}</p>
+      {words ? null : (
+        <p className="band-name">{bandLabel(shown ?? band)}</p>
+      )}
+      <p className="hook-line">{bandNote(shown)}</p>
 
       <p className="live-row">
         {live ? <span className="live-dot" aria-hidden="true" /> : null}
         <span>{live ? "Live" : "Updated"}</span>
-        <span className="live-time">{stamp ?? "No update time was published"}</span>
-        {!live && stamp ? (
-          <span className="live-note">Official feed is behind; it refreshes hourly.</span>
+        <span className="live-time">{stamp ?? "Time not published"}</span>
+        {!live && stamp && value != null ? (
+          <span className="live-note">
+            Latest published reading. Updates hourly.
+          </span>
         ) : null}
       </p>
-      <p className="scale-line">CPCB National Air Quality Index</p>
     </div>
   );
 }
@@ -70,6 +79,15 @@ export function HeroHead({
       <h1 className="hero-name">
         {href ? <Link href={href}>{title}</Link> : title}
       </h1>
+    </header>
+  );
+}
+
+/** Heading-free hero label, for pages whose title sits above the card. */
+export function HeroLabel({ children }: { children: string }) {
+  return (
+    <header className="hero-head">
+      <p className="hero-kicker">{children}</p>
     </header>
   );
 }

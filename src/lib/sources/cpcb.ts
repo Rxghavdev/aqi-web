@@ -1,4 +1,5 @@
 import type { CpcbRecord } from "../aggregate.ts";
+import { logInfo, logWarn } from "../log.ts";
 
 const RESOURCE =
   "https://api.data.gov.in/resource/3b01bcb8-0b14-4abf-b6f2-c1bfd384ba69";
@@ -72,9 +73,7 @@ export async function fetchAllCpcbRecords(): Promise<CpcbRecord[]> {
 
   if (first.records.length === 0 || total === 0) {
     lastInfo = { pageSize, requestedLimit, total, pages: 1 };
-    console.error(
-      `CPCB page size ${pageSize} (requested ${requestedLimit}), rows ${total}`,
-    );
+    logWarn("cpcb.empty_feed", { pageSize, requestedLimit, total });
     return [];
   }
 
@@ -90,9 +89,7 @@ export async function fetchAllCpcbRecords(): Promise<CpcbRecord[]> {
   let finished = 1;
   const pageCount = offsets.length + 1;
 
-  console.error(
-    `CPCB page size ${pageSize} (requested ${requestedLimit}), rows ${total}, pages ${pageCount}`,
-  );
+  logInfo("cpcb.fetch_start", { pageSize, requestedLimit, total, pages: pageCount });
 
   const workers = Array.from(
     { length: Math.min(CONCURRENCY, offsets.length) },
@@ -110,9 +107,10 @@ export async function fetchAllCpcbRecords(): Promise<CpcbRecord[]> {
         pages.set(offset, page.records);
         finished += 1;
         if (finished % 20 === 0 || finished === pageCount) {
-          console.error(
-            `CPCB fetched ${Math.min(finished, pageCount)}/${pageCount} pages`,
-          );
+          logInfo("cpcb.fetch_progress", {
+            pages: Math.min(finished, pageCount),
+            of: pageCount,
+          });
         }
       }
     },
@@ -184,7 +182,7 @@ function noteSuccess(): void {
     gate.limit = CONCURRENCY;
     gate.gapMs = 0;
     gate.successes = 0;
-    console.error("CPCB resuming concurrency 5");
+    logInfo("cpcb.resume_concurrency", { limit: CONCURRENCY });
     pump();
   }
 }
@@ -193,9 +191,10 @@ function pauseForRateLimit(): Promise<void> {
   if (!rateLimitPause) {
     const ms = pauseMs;
     pauseMs = Math.min(pauseMs + 30_000, 180_000);
-    console.error(
-      `CPCB rate limited; pausing ${Math.round(ms / 1000)}s, then one request every ${Math.round(gate.gapMs / 1000)}s`,
-    );
+    logWarn("cpcb.rate_limited", {
+      pauseSec: Math.round(ms / 1000),
+      gapSec: Math.round(gate.gapMs / 1000),
+    });
     rateLimitPause = sleep(ms).finally(() => {
       rateLimitPause = null;
       gapRaisedForThisPause = false;

@@ -20,7 +20,10 @@ export function ReadingLink({
 }) {
   const value = finiteAqi(aqi);
   return (
-    <Link href={href} className={rank == null ? "rank-row rank-row-plain" : "rank-row"}>
+    <Link
+      href={href}
+      className={rank == null ? "rank-row rank-row-plain" : "rank-row"}
+    >
       {rank != null ? <span className="rank-index">{rank}</span> : null}
       <span className="rank-name">
         {title}

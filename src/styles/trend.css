@@ -1,0 +1,545 @@
+/* History chart. Owned by the history-chart workstream. */
+
+.trend-card {
+  --trend-h: 216px;
+  --trend-band-opacity: 0.075;
+  min-width: 0;
+  max-width: 100%;
+  padding: 1.1rem 1.1rem 1.15rem;
+  border: 1px solid var(--hairline);
+  border-radius: 28px;
+  background: var(--card);
+  scroll-margin-top: 4.75rem;
+}
+
+:root[data-theme="dark"] .trend-card {
+  --trend-band-opacity: 0.11;
+}
+
+@media (min-width: 560px) {
+  .trend-card {
+    --trend-h: 264px;
+    padding: 1.4rem 1.5rem 1.5rem;
+  }
+}
+
+/* Head ------------------------------------------------------------------- */
+
+.trend-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+}
+
+.trend-titles {
+  min-width: 0;
+}
+
+.trend-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.trend-sub {
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+/* Range switch: 44px tall, the thumb slides between the two options. */
+.trend-switch {
+  position: relative;
+  display: grid;
+  flex: none;
+  grid-template-columns: 1fr 1fr;
+  width: 8.5rem;
+  height: 44px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 7%, transparent);
+}
+
+.trend-thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: var(--ink);
+  transition: transform 0.28s cubic-bezier(0.3, 0.8, 0.25, 1);
+}
+
+.trend-switch[data-range="6m"] .trend-thumb {
+  transform: translateX(100%);
+}
+
+.trend-switch button {
+  position: relative;
+  z-index: 1;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.trend-switch button[aria-pressed="true"] {
+  color: var(--paper);
+}
+
+.trend-switch button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Stat tiles ---------------------------------------------------------------- */
+
+.trend-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+}
+
+.trend-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+  min-height: 6.4rem;
+  padding: 0.65rem 0.7rem 0.7rem;
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+}
+
+.trend-stat dt {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.trend-stat dd {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  margin: 0;
+}
+
+.trend-stat-value {
+  font-size: 1.7rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+}
+
+.trend-stat[data-empty] .trend-stat-value {
+  color: var(--muted);
+}
+
+.trend-stat-band {
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.trend-stat-date {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.4rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.trend-stat-skeleton {
+  flex: 1;
+  min-height: 3.6rem;
+  border-radius: 10px;
+  background: var(--hairline);
+  animation: trend-pulse 1.4s ease-in-out infinite;
+}
+
+/* Plot ---------------------------------------------------------------------- */
+
+.trend-plot {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  height: var(--trend-h);
+  margin-top: 1rem;
+  overflow: hidden;
+  border-radius: 14px;
+  transition: opacity 0.2s ease;
+}
+
+.trend-plot[role="group"] {
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: crosshair;
+}
+
+.trend-plot[role="group"]:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.trend-plot[data-busy] {
+  opacity: 0.5;
+}
+
+.trend-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: block;
+  max-width: none;
+  overflow: visible;
+}
+
+.trend-plot-skeleton {
+  background: var(--hairline);
+  animation: trend-pulse 1.4s ease-in-out infinite;
+}
+
+.trend-band {
+  fill-opacity: var(--trend-band-opacity);
+}
+
+.trend-grid {
+  stroke: color-mix(in srgb, var(--ink) 16%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 2 4;
+}
+
+.trend-axis {
+  fill: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.trend-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.trend-line[data-kind="official"] {
+  stroke-width: 2.75;
+}
+
+.trend-line[data-kind="estimate"] {
+  stroke-width: 2;
+  stroke-dasharray: 1 6;
+  stroke-opacity: 0.8;
+}
+
+.trend-area[data-kind="official"] {
+  fill-opacity: 0.32;
+}
+
+.trend-area[data-kind="estimate"] {
+  fill-opacity: 0.12;
+}
+
+.trend-dot {
+  stroke: var(--card);
+  stroke-width: 2;
+}
+
+.trend-dot-hollow {
+  fill: var(--card);
+  stroke-width: 2;
+}
+
+.trend-halo {
+  fill-opacity: 0.2;
+}
+
+.trend-reveal {
+  animation: trend-reveal 0.95s cubic-bezier(0.3, 0.7, 0.2, 1) backwards;
+}
+
+/* Cursor -------------------------------------------------------------------- */
+
+.trend-crosshair {
+  stroke: color-mix(in srgb, var(--ink) 38%, transparent);
+  stroke-width: 1;
+}
+
+.trend-cursor-halo {
+  fill-opacity: 0.2;
+}
+
+.trend-cursor-dot {
+  stroke: var(--card);
+  stroke-width: 2.5;
+}
+
+.trend-cursor-dot-hollow {
+  fill: var(--card);
+}
+
+.trend-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  width: max-content;
+  min-width: 8.75rem;
+  max-width: calc(100% - 8px);
+  padding: 0.5rem 0.65rem 0.55rem;
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--ink) 45%, transparent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+  white-space: nowrap;
+}
+
+.trend-tip[data-show] {
+  opacity: 1;
+}
+
+.trend-tip-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.trend-tip-date {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.trend-tip-main {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.trend-tip-value {
+  font-size: 1.55rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.trend-tip-band {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.trend-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.08rem 0.45rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.35;
+}
+
+.trend-tag[data-kind="official"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.trend-tag[data-kind="estimate"] {
+  border-color: var(--muted);
+  border-style: dashed;
+  color: var(--muted);
+}
+
+/* Legend, note, caption ---------------------------------------------------- */
+
+.trend-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-top: 0.85rem;
+}
+
+.trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.trend-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.trend-swatch {
+  position: relative;
+  flex: none;
+  width: 1.7rem;
+  height: 0.8rem;
+}
+
+.trend-swatch::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0.3rem;
+  left: 0;
+  border-top: 3px solid var(--ink);
+  border-radius: 2px;
+  transform: translateY(-50%);
+}
+
+.trend-swatch::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 0.62rem;
+  height: 0.62rem;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: var(--ink);
+  transform: translateY(-50%);
+}
+
+.trend-swatch-estimate::before {
+  border-top: 3px dotted var(--muted);
+}
+
+.trend-swatch-estimate::after {
+  border-color: var(--muted);
+  background: var(--card);
+}
+
+.trend-note {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.trend-caption {
+  max-width: 38rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+/* Empty and error ---------------------------------------------------------- */
+
+.trend-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 1rem;
+  border: 1px dashed var(--hairline);
+  text-align: center;
+}
+
+.trend-notice-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.trend-notice-text {
+  max-width: 22rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.trend-retry {
+  min-height: 44px;
+  margin-top: 0.6rem;
+  padding: 0 1.25rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.trend-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Motion ------------------------------------------------------------------- */
+
+@keyframes trend-reveal {
+  from {
+    clip-path: inset(-14px 100% -14px -14px);
+  }
+  to {
+    clip-path: inset(-14px -14px -14px -14px);
+  }
+}
+
+@keyframes trend-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}

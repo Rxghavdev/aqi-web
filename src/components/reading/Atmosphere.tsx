@@ -33,7 +33,9 @@ export function Atmosphere({ band }: { band: Band | null }) {
     <div
       className="atmo"
       aria-hidden="true"
-      style={{ "--lvl": level, "--cloud-mix": `${12 + level * 3}%` } as CSSProperties}
+      style={
+        { "--lvl": level, "--cloud-mix": `${12 + level * 3}%` } as CSSProperties
+      }
     >
       <span className="atmo-smog" />
       <span className="atmo-smog atmo-smog-b" />

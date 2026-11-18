@@ -80,7 +80,13 @@ export function AqiDial({
           <span style={{ background: bandAccent(band) }} />
         </span>
       ) : null}
-      <span className="dial-halo" aria-hidden="true" style={{ background: `radial-gradient(circle, ${bandAccent(band)} 0%, transparent 70%)` }} />
+      <span
+        className="dial-halo"
+        aria-hidden="true"
+        style={{
+          background: `radial-gradient(circle, ${bandAccent(band)} 0%, transparent 70%)`,
+        }}
+      />
       <div className="dial-core">{children}</div>
     </div>
   );

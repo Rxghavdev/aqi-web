@@ -1,6 +1,8 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, renameSync, rmSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { errorText, logError, logWarn } from "./log.ts";
+import { shared } from "./shared.ts";
 import type { CityAqi, StationAqi } from "./types.ts";
 
 export const HISTORY_PATH = path.join(process.cwd(), ".data", "aqi.db");
@@ -22,15 +24,109 @@ export type TrendQuery = {
   range: TrendRange;
 };
 
-let shared: DatabaseSync | null = null;
+const handle = shared("history.handle", () => ({
+  db: null as DatabaseSync | null,
+  /** After the shared file fails to open, do not retry on every request. */
+  failedAt: 0,
+  failure: "",
+}));
+const OPEN_RETRY_MS = 30_000;
 
+/**
+ * Open the history database. Callers treat history as optional, so this may
+ * throw and every caller must catch; repeated failures are answered from a
+ * short memory instead of re-hitting the disk on each request.
+ */
 export function openHistory(filename = HISTORY_PATH): DatabaseSync {
   if (filename === ":memory:") return migrate(new DatabaseSync(":memory:"));
-  if (filename === HISTORY_PATH && shared) return shared;
-  if (filename !== ":memory:") mkdirSync(path.dirname(filename), { recursive: true });
-  const db = migrate(new DatabaseSync(filename));
-  if (filename === HISTORY_PATH) shared = db;
-  return db;
+  const isShared = filename === HISTORY_PATH;
+  if (isShared && handle.db) return handle.db;
+  if (isShared && handle.failedAt && Date.now() - handle.failedAt < OPEN_RETRY_MS) {
+    throw new Error(handle.failure);
+  }
+
+  try {
+    mkdirSync(path.dirname(filename), { recursive: true });
+    const db = openFile(filename);
+    if (isShared) {
+      handle.db = db;
+      handle.failedAt = 0;
+    }
+    return db;
+  } catch (error) {
+    if (isShared) {
+      handle.failedAt = Date.now();
+      handle.failure = errorText(error);
+      logError("history.open_failed", { error: handle.failure });
+    }
+    throw error;
+  }
+}
+
+function openFile(filename: string): DatabaseSync {
+  try {
+    return configure(new DatabaseSync(filename));
+  } catch (error) {
+    if (!looksCorrupt(error)) throw error;
+    // An unreadable file would fail every request for good. Move it aside for
+    // inspection and start a fresh one; official history refills from the next
+    // refresh and the model line from the next trend request.
+    quarantine(filename);
+    logWarn("history.quarantined", { file: path.basename(filename), error: errorText(error) });
+    return configure(new DatabaseSync(filename));
+  }
+}
+
+function configure(db: DatabaseSync): DatabaseSync {
+  // Wait for a competing writer (a sync job, another worker) instead of
+  // failing with SQLITE_BUSY.
+  db.exec("PRAGMA busy_timeout = 3000");
+  try {
+    // WAL lets the web server read while a refresh writes. The mode is stored
+    // in the file, so it only needs to succeed once; a lock here is harmless.
+    db.exec("PRAGMA journal_mode = WAL");
+    db.exec("PRAGMA synchronous = NORMAL");
+  } catch {
+    /* keep the default journal */
+  }
+  return migrate(db);
+}
+
+export function looksCorrupt(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /malformed|not a database|corrupt/i.test(message);
+}
+
+function quarantine(filename: string): void {
+  try {
+    renameSync(filename, `${filename}.corrupt-${Date.now()}`);
+  } catch {
+    /* if it cannot be moved it cannot be fixed here either */
+  }
+  for (const suffix of ["-wal", "-shm"]) {
+    rmSync(`${filename}${suffix}`, { force: true });
+  }
+}
+
+export type HistoryStatus =
+  | { status: "ok"; readings: number; newestOn: string | null }
+  | { status: "unavailable"; error: string };
+
+/** For /api/health. Never throws. */
+export function historyStatus(): HistoryStatus {
+  try {
+    const db = openHistory();
+    const row = db
+      .prepare("SELECT COUNT(*) AS readings, MAX(recorded_on) AS newest FROM readings WHERE source = 'cpcb'")
+      .get() as { readings: number; newest: string | null } | undefined;
+    return {
+      status: "ok",
+      readings: Number(row?.readings ?? 0),
+      newestOn: row?.newest ?? null,
+    };
+  } catch (error) {
+    return { status: "unavailable", error: errorText(error) };
+  }
 }
 
 function migrate(db: DatabaseSync): DatabaseSync {
@@ -149,12 +245,18 @@ export function recordModelPoints(
 }
 
 function withTransaction(db: DatabaseSync, work: () => void): void {
-  db.exec("BEGIN");
+  // IMMEDIATE takes the write lock up front, so busy_timeout applies cleanly
+  // instead of failing a read-to-write upgrade midway.
+  db.exec("BEGIN IMMEDIATE");
   try {
     work();
     db.exec("COMMIT");
   } catch (error) {
-    db.exec("ROLLBACK");
+    try {
+      db.exec("ROLLBACK");
+    } catch {
+      /* the original error is the useful one */
+    }
     throw error;
   }
 }

@@ -4,14 +4,17 @@ import { notFound } from "next/navigation";
 import { AdSlot } from "@/components/ads/AdSlot";
 import { StationMap } from "@/components/map/StationMap";
 import { stationPins } from "@/components/map/pins";
-import { AqiFigure, HeroHead } from "@/components/reading/AqiFigure";
-import { BandScale } from "@/components/reading/BandScale";
+import {
+  PlaceHead,
+  PlaceLayout,
+  PlaceSection,
+} from "@/components/place/PlaceLayout";
+import { PlaceHero, PollutantsSection } from "@/components/place/PlaceParts";
+import { BandLegend } from "@/components/reading/BandScale";
 import { FactCard } from "@/components/reading/FactCard";
-import { heroClass, heroStyle } from "@/components/reading/hero";
 import { loadCity } from "@/components/reading/load";
-import { PollutantBoard } from "@/components/reading/PollutantBoard";
-import { ReadingLink } from "@/components/reading/ReadingLink";
-import { ReadingStage } from "@/components/reading/ReadingStage";
+import { NearbyCards } from "@/components/reading/NearbyCards";
+import { StationRows } from "@/components/reading/StationRows";
 import { WeatherCard } from "@/components/reading/WeatherCard";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { TrendChart } from "@/components/trend/TrendChart";
@@ -67,124 +70,154 @@ async function CityReading({
 }) {
   const { city, stations, nearby } = result;
   const ordered = sortStations(stations);
-  const [first, ...rest] = ordered;
+  const [first] = ordered;
   const value = finiteAqi(city.aqi);
   const spread = spreadOf(ordered);
+  const around = nearby
+    .filter(
+      (station) =>
+        !(station.city === city.city && station.state === city.state),
+    )
+    .slice(0, 6);
+  const count = stations.length;
 
   return (
-    <article className="desk">
+    <>
       <JsonLd data={cityJsonLd(city)} />
-      <div className="desk-main">
-        <ReadingStage
-          poster={
-            <section className={heroClass(city.band)} style={heroStyle(city.band)}>
-              <HeroHead kicker={city.state} title={city.city} />
-              <AqiFigure
-                aqi={value}
-                band={city.band}
-                updatedAt={city.updatedAt}
-                missing="dash"
-              />
-              <BandScale band={city.band} value={value} />
-            </section>
-          }
-          facts={
+      <PlaceLayout
+        head={
+          <PlaceHead
+            crumbs={[
+              { label: "Home", href: "/" },
+              { label: city.state },
+              { label: city.city },
+            ]}
+            title={city.city}
+            sub={
+              city.stationsReporting > 0
+                ? `City average of ${city.stationsReporting} ${city.stationsReporting === 1 ? "station" : "stations"}`
+                : "No stations reporting right now"
+            }
+            share={{
+              title: `${city.city} air quality`,
+              text:
+                value != null
+                  ? `${city.city} AQI is ${value}${city.band ? ` (${city.band})` : ""} right now.`
+                  : `Air quality in ${city.city}.`,
+              path: cityPath(city.slug),
+            }}
+          />
+        }
+        hero={
+          <PlaceHero
+            kicker="City AQI"
+            aqi={value}
+            band={city.band}
+            updatedAt={city.updatedAt}
+            missing="words"
+          />
+        }
+        side={
+          <>
             <FactCard
               facts={[
                 {
-                  label: "Stations",
-                  value: `${city.stationsReporting} of ${city.stationsTotal} reporting`,
+                  label: "Stations reporting",
+                  icon: "station",
+                  value: `${city.stationsReporting} of ${city.stationsTotal}`,
                 },
                 {
                   label: "Set by",
+                  icon: "pollutant",
                   value: city.prominent ? pollutantLabel(city.prominent) : "—",
                 },
                 {
-                  label: "Worst monitor",
-                  value: first ? (
-                    <Link className="fact-link" href={stationPath(first.slug)}>
-                      {first.name}
-                    </Link>
-                  ) : (
-                    "—"
-                  ),
+                  label: "Highest station",
+                  icon: "peak",
+                  value:
+                    first && finiteAqi(first.aqi) != null ? (
+                      <Link
+                        className="fact-link"
+                        href={stationPath(first.slug)}
+                      >
+                        {first.name}
+                      </Link>
+                    ) : (
+                      "—"
+                    ),
                 },
                 {
                   label: "Spread",
-                  value: spread ? `${spread}` : "—",
+                  icon: "spread",
+                  value: spread ?? "—",
                 },
               ]}
-              note="CPCB averages the stations in a city. One monitor can be worse than the average."
-            >
-              {first ? (
-                <WeatherCard latitude={first.latitude} longitude={first.longitude} />
-              ) : null}
-            </FactCard>
-          }
-          map={
-            <StationMap
-              pins={stationPins(nearby)}
-              activeSlug={first?.slug}
-              hereLabel="This city"
             />
-          }
-        />
-        {first ? (
-          <section className="section">
-            <div className="section-head">
-              <h2 className="section-title">Inside the worst monitor</h2>
-              <p className="section-sub">
-                {first.name}. Open a tile for what the pollutant is.
-              </p>
-            </div>
-            <PollutantBoard pollutants={first.pollutants} />
-            <p className="meters-note">These are index points, not concentrations.</p>
-          </section>
-        ) : null}
-        <TrendChart kind="city" slug={city.slug} accent={bandAccent(city.band)} />
-      </div>
-      <div className="rank-panel">
-        <div className="section-head">
-          <h2 className="rank-title">Stations</h2>
-          <p className="section-sub">Worst first. Ties go alphabetically.</p>
-        </div>
-        {first ? (
-          <div className="rank-list">
-            <ReadingLink
-              rank={1}
-              href={stationPath(first.slug)}
-              title={first.name}
-              aqi={first.aqi}
-              band={first.band}
-            />
-            <div className="ad-slot">
-              <AdSlot slot="city" />
-            </div>
-            {rest.map((station, index) => (
-              <ReadingLink
-                key={station.slug}
-                rank={index + 2}
-                href={stationPath(station.slug)}
-                title={station.name}
-                aqi={station.aqi}
-                band={station.band}
+            {first ? (
+              <WeatherCard
+                latitude={first.latitude}
+                longitude={first.longitude}
               />
-            ))}
-          </div>
-        ) : (
-          <>
-            <p className="empty-note">No stations were published for this city.</p>
-            <div className="ad-slot">
-              <AdSlot slot="city" />
-            </div>
+            ) : null}
+            <BandLegend band={value == null ? null : city.band} />
           </>
-        )}
-      </div>
-    </article>
+        }
+        map={
+          <StationMap
+            pins={stationPins(nearby)}
+            activeSlug={first?.slug}
+            hereLabel="This city"
+          />
+        }
+      >
+        {first ? (
+          <PollutantsSection
+            station={first}
+            sub={`Readings at ${first.name}, the city's highest station. The highest sub-index at a station sets its AQI.`}
+          />
+        ) : null}
+        <TrendChart
+          kind="city"
+          slug={city.slug}
+          accent={bandAccent(city.band)}
+        />
+        <PlaceSection
+          id="stations"
+          title="Stations"
+          sub={
+            count > 0
+              ? "Ranked by AQI, highest first. The city AQI is the average of the stations reporting."
+              : undefined
+          }
+        >
+          {count > 0 ? (
+            <StationRows stations={ordered} />
+          ) : (
+            <p className="empty-card">
+              No stations were published for this city. Check back in an hour.
+            </p>
+          )}
+        </PlaceSection>
+        <div className="ad-slot">
+          <AdSlot slot="city" />
+        </div>
+        {around.length > 0 ? (
+          <PlaceSection
+            id="nearby"
+            title="Nearby"
+            sub="Stations around this city."
+          >
+            <NearbyCards stations={around} />
+          </PlaceSection>
+        ) : null}
+      </PlaceLayout>
+    </>
   );
 }
 
-function spreadOf(stations: Array<{ aqi: number | null; insufficient: boolean }>): string | null {
+function spreadOf(
+  stations: Array<{ aqi: number | null; insufficient: boolean }>,
+): string | null {
   const values = stations
     .filter((station) => !station.insufficient && station.aqi != null)
     .map((station) => station.aqi as number);

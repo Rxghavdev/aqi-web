@@ -3,51 +3,35 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
-import { bandNumberColor, bandTextColor } from "@/lib/aqi";
-import type { Band, SearchHit } from "@/lib/types";
-import { bandLabel, cityPath, stationPath } from "@/components/reading/text";
-import { writePoint } from "@/components/place/storage";
+import type { SearchHit } from "@/lib/types";
+import { AqiChip } from "./AqiChip";
+import { FOCUS_SEARCH_EVENTS } from "./events";
+import { hitPath } from "./hits";
+import { pushRecent } from "./recent";
+import { useLocate } from "./useLocate";
+import { usePlaceSearch } from "./usePlaceSearch";
 
-const BANDS = new Set<Band>([
-  "Good",
-  "Satisfactory",
-  "Moderate",
-  "Poor",
-  "Very Poor",
-  "Severe",
-]);
-
+/** Inline search with the results panel. Used in the home hero and on /near. */
 export function PlaceSearch() {
   const router = useRouter();
   const baseId = useId();
   const inputId = `${baseId}-input`;
   const listId = `${baseId}-list`;
-  const [query, setQuery] = useState("");
-  const [hits, setHits] = useState<SearchHit[]>([]);
+  const { query, setQuery, hits, status } = usePlaceSearch();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [locationNote, setLocationNote] = useState<string | null>(null);
-  const [locating, setLocating] = useState(false);
-  const abortRef = useRef<AbortController | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const requestRef = useRef(0);
+  const { locate, locating, note: locationNote } = useLocate();
   const listRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const optionRefs = useRef<Array<HTMLAnchorElement | null>>([]);
-  const mounted = useRef(false);
 
   useEffect(() => {
-    mounted.current = true;
     function focusSearch() {
       inputRef.current?.focus();
     }
-    window.addEventListener("aqi-desk-focus-search", focusSearch);
+    for (const name of FOCUS_SEARCH_EVENTS) window.addEventListener(name, focusSearch);
     return () => {
-      mounted.current = false;
-      window.removeEventListener("aqi-desk-focus-search", focusSearch);
-      if (timerRef.current) window.clearTimeout(timerRef.current);
-      abortRef.current?.abort();
+      for (const name of FOCUS_SEARCH_EVENTS) window.removeEventListener(name, focusSearch);
     };
   }, []);
 
@@ -63,61 +47,25 @@ export function PlaceSearch() {
     }
   }, [active, hits, open]);
 
+  const notice =
+    status === "loading"
+      ? "Searching."
+      : status === "empty"
+        ? "No city or station matches that."
+        : status === "error"
+          ? "Search is unavailable. Try again in a moment."
+          : null;
+
   function choose(hit: SearchHit) {
     setOpen(false);
-    router.push(hit.kind === "city" ? cityPath(hit.slug) : stationPath(hit.slug));
-  }
-
-  async function loadHits(q: string, signal: AbortSignal, request: number) {
-    setNotice("Searching.");
-    setHits([]);
-    setActive(-1);
-    setOpen(true);
-    try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(q)}`, {
-        signal,
-        headers: { accept: "application/json" },
-      });
-      if (signal.aborted || request !== requestRef.current) return;
-      if (!response.ok) {
-        setHits([]);
-        setNotice("Search is unavailable. Try again in a moment.");
-        setOpen(true);
-        return;
-      }
-      const data: unknown = await response.json();
-      if (signal.aborted || request !== requestRef.current) return;
-      const next = parseHits(data);
-      setHits(next);
-      setActive(-1);
-      setOpen(true);
-      setNotice(next.length === 0 ? "No city or station matches that." : null);
-    } catch (error) {
-      if (signal.aborted || request !== requestRef.current || isAbortError(error)) return;
-      setHits([]);
-      setOpen(true);
-      setNotice("Search is unavailable. Try again in a moment.");
-    }
+    pushRecent(hit);
+    router.push(hitPath(hit));
   }
 
   function onQueryChange(value: string) {
     setQuery(value);
-    if (timerRef.current) window.clearTimeout(timerRef.current);
-    abortRef.current?.abort();
-    const request = ++requestRef.current;
-    const q = value.trim();
-    if (!q) {
-      setHits([]);
-      setOpen(false);
-      setActive(-1);
-      setNotice(null);
-      return;
-    }
-    timerRef.current = setTimeout(() => {
-      const controller = new AbortController();
-      abortRef.current = controller;
-      void loadHits(q, controller.signal, request);
-    }, 200);
+    setActive(-1);
+    setOpen(value.trim().length > 0);
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -146,43 +94,10 @@ export function PlaceSearch() {
     if (hit) choose(hit);
   }
 
-  function onLocate() {
-    setLocationNote(null);
-    setOpen(false);
-    if (!("geolocation" in navigator)) {
-      setLocationNote(
-        "This browser cannot share a location, so search for a city or station instead.",
-      );
-      return;
-    }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        if (!mounted.current) return;
-        setLocating(false);
-        const lat = position.coords.latitude.toFixed(4);
-        const lon = position.coords.longitude.toFixed(4);
-        writePoint(Number(lat), Number(lon));
-        router.push(`/near?lat=${lat}&lon=${lon}`);
-      },
-      (error) => {
-        if (!mounted.current) return;
-        setLocating(false);
-        setLocationNote(
-          error.code === error.PERMISSION_DENIED
-            ? "Location was denied, so search for a city or station instead."
-            : "Location could not be read, so search for a city or station instead.",
-        );
-      },
-      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
-    );
-  }
-
+  const showHits = open && hits.length > 0;
+  const showNotice = open && hits.length === 0 && notice != null;
   const live =
-    notice ??
-    (open && hits.length > 0
-      ? `${hits.length} ${hits.length === 1 ? "match" : "matches"}`
-      : "");
+    notice ?? (showHits ? `${hits.length} ${hits.length === 1 ? "match" : "matches"}` : "");
   const activeId = active >= 0 ? `${baseId}-opt-${active}` : undefined;
 
   return (
@@ -204,6 +119,7 @@ export function PlaceSearch() {
             ref={inputRef}
             id={inputId}
             className="search-field"
+            data-hero-search=""
             role="combobox"
             type="text"
             value={query}
@@ -212,14 +128,14 @@ export function PlaceSearch() {
             autoCorrect="off"
             autoCapitalize="none"
             spellCheck={false}
-            aria-expanded={open}
+            aria-expanded={showHits || showNotice}
             aria-controls={listId}
             aria-autocomplete="list"
-            aria-activedescendant={open ? activeId : undefined}
+            aria-activedescendant={showHits ? activeId : undefined}
             onChange={(event) => onQueryChange(event.target.value)}
             onKeyDown={onKeyDown}
             onFocus={() => {
-              if (hits.length > 0 || notice) setOpen(true);
+              if (query.trim()) setOpen(true);
             }}
           />
           <div
@@ -227,17 +143,17 @@ export function PlaceSearch() {
             ref={listRef}
             role={hits.length > 0 ? "listbox" : undefined}
             aria-label={hits.length > 0 ? "Matching cities and stations" : undefined}
-            hidden={!open}
+            hidden={!(showHits || showNotice)}
             className="search-panel"
           >
-            {hits.length > 0
+            {showHits
               ? hits.map((hit, index) => {
                   const selected = index === active;
                   return (
                     <a
                       key={`${hit.kind}-${hit.slug}-${index}`}
                       id={`${baseId}-opt-${index}`}
-                      href={hit.kind === "city" ? cityPath(hit.slug) : stationPath(hit.slug)}
+                      href={hitPath(hit)}
                       ref={(node) => {
                         optionRefs.current[index] = node;
                       }}
@@ -260,24 +176,11 @@ export function PlaceSearch() {
                           <span className="search-option-detail">{hit.detail}</span>
                         ) : null}
                       </span>
-                      <span className="row-aqi">
-                        <span
-                          className="band-word"
-                          style={{ color: bandTextColor(hit.band) }}
-                        >
-                          {bandLabel(hit.band)}
-                        </span>
-                        <span
-                          className="row-value"
-                          style={{ color: bandNumberColor(hit.band) }}
-                        >
-                          {hit.aqi ?? "—"}
-                        </span>
-                      </span>
+                      <AqiChip aqi={hit.aqi} band={hit.band} />
                     </a>
                   );
                 })
-              : notice
+              : showNotice
                 ? <p className="search-empty">{notice}</p>
                 : null}
           </div>
@@ -290,7 +193,7 @@ export function PlaceSearch() {
       <button
         type="button"
         className="location-button"
-        onClick={onLocate}
+        onClick={locate}
         disabled={locating}
         aria-busy={locating}
       >
@@ -298,36 +201,4 @@ export function PlaceSearch() {
       </button>
     </div>
   );
-}
-
-function parseHits(data: unknown): SearchHit[] {
-  return extractRows(data).flatMap((row) => {
-    const hit = asHit(row);
-    return hit ? [hit] : [];
-  });
-}
-
-function extractRows(data: unknown): unknown[] {
-  if (Array.isArray(data)) return data;
-  if (!data || typeof data !== "object") return [];
-  const record = data as { hits?: unknown; results?: unknown };
-  if (Array.isArray(record.hits)) return record.hits;
-  if (Array.isArray(record.results)) return record.results;
-  return [];
-}
-
-function asHit(value: unknown): SearchHit | null {
-  if (!value || typeof value !== "object") return null;
-  const row = value as Record<string, unknown>;
-  if (row.kind !== "city" && row.kind !== "station") return null;
-  if (typeof row.slug !== "string" || row.slug.length === 0) return null;
-  if (typeof row.label !== "string") return null;
-  const detail = typeof row.detail === "string" ? row.detail : "";
-  const aqi = typeof row.aqi === "number" && Number.isFinite(row.aqi) ? row.aqi : null;
-  const band = typeof row.band === "string" && BANDS.has(row.band as Band) ? (row.band as Band) : null;
-  return { kind: row.kind, slug: row.slug, label: row.label, detail, aqi, band };
-}
-
-function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === "AbortError";
 }

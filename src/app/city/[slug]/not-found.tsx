@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { NotFoundView } from "@/components/pages/NotFoundView";
 
 export const metadata: Metadata = {
   title: "City not found",
@@ -7,14 +7,10 @@ export const metadata: Metadata = {
 
 export default function CityNotFound() {
   return (
-    <div className="copy">
-      <h1 className="page-title">That city is not in this reading.</h1>
-      <p className="lede">The address does not match a CPCB city.</p>
-      <p className="mt-6">
-        <Link href="/" className="text-link">
-          Back to the readings
-        </Link>
-      </p>
-    </div>
+    <NotFoundView
+      eyebrow="City not found"
+      title="We could not find that city."
+      lede="It may be spelled differently, or CPCB may not publish readings there. Search for another name, or browse every city."
+    />
   );
 }

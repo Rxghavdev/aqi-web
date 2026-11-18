@@ -10,6 +10,10 @@ export type MapPin = {
   aqi: number | null;
   band: Band | null;
   href: string;
+  /** Which trend series the pin card reads: a station, or a city average. */
+  kind: "station" | "city";
+  /** CPCB publish stamp ("DD-MM-YYYY HH:mm:ss"), when the source carries one. */
+  updatedAt: string | null;
 };
 
 const BANDS = new Set<Band>([
@@ -36,6 +40,8 @@ export function stationPins(stations: readonly StationAqi[]): MapPin[] {
       aqi,
       band: aqi == null ? null : station.band,
       href: stationPath(station.slug),
+      kind: "station",
+      updatedAt: station.updatedAt ?? null,
     });
   }
   return pins;
@@ -61,6 +67,8 @@ export function cityPins(rows: unknown): MapPin[] {
       aqi,
       band: aqi == null ? null : band,
       href: cityPath(item.slug),
+      kind: "city",
+      updatedAt: typeof item.updatedAt === "string" ? item.updatedAt : null,
     });
   }
   return pins;

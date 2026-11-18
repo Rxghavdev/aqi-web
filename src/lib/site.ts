@@ -1,7 +1,9 @@
-export const SITE_NAME = "AQI Desk";
+export const SITE_NAME = "Hawa";
+
+export const SITE_TAGLINE = "India's air, in one number.";
 
 export const SITE_DESCRIPTION =
-  "India's official air quality, station by station, from the Central Pollution Control Board. The number on this site is the National Air Quality Index.";
+  "Live air quality for every Indian city and monitoring station, on the National Air Quality Index, with weather, pollutants and 30-day history.";
 
 const LOCAL = "http://localhost:3000";
 
@@ -37,3 +39,6 @@ export function siteUrl(): string {
 function isLocal(value: string): boolean {
   return /(^https?:\/\/)?(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(:|\/|$)/i.test(value);
 }
+
+/** Default document title and the name shown when the site is installed. */
+export const SITE_TITLE = "Hawa — Live air quality across India";

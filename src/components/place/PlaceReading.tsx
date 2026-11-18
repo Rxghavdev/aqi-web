@@ -1,51 +1,63 @@
-import type { PlaceReport } from "@/lib/types";
+import Link from "next/link";
+import type { ReactNode } from "react";
+import type { PlaceReport, StationAqi } from "@/lib/types";
 import { stationPins } from "@/components/map/pins";
+import { StationMap } from "@/components/map/StationMap";
 import { AqiFigure, HeroHead } from "@/components/reading/AqiFigure";
-import { BandScale } from "@/components/reading/BandScale";
+import { BandLegend, BandScale } from "@/components/reading/BandScale";
 import { CityAverageLink } from "@/components/reading/CityAverageLink";
 import { FactCard } from "@/components/reading/FactCard";
 import { heroClass, heroStyle } from "@/components/reading/hero";
-import { PollutantBoard } from "@/components/reading/PollutantBoard";
+import { NearbyCards } from "@/components/reading/NearbyCards";
 import { ReadingStage } from "@/components/reading/ReadingStage";
 import { SpikeStrip } from "@/components/reading/SpikeStrip";
+import { StationRows } from "@/components/reading/StationRows";
 import { WeatherCard } from "@/components/reading/WeatherCard";
-import { officialStation, pollutantLabel, stationPath } from "@/components/reading/text";
-import { StationMap } from "@/components/map/StationMap";
-import Link from "next/link";
+import {
+  cityPath,
+  officialStation,
+  pollutantLabel,
+  sortStations,
+  stationPath,
+} from "@/components/reading/text";
+import { PlaceHead, PlaceLayout, PlaceSection } from "./PlaceLayout";
+import { PlaceHero, PollutantsSection } from "./PlaceParts";
+
+type Point = { lat: number; lon: number } | null;
 
 /**
- * The reading for a saved point: official station number, the facts that
- * qualify it, the map, the pollutants behind it, and the history.
+ * The reading for a visitor's location: the nearest station's AQI, the facts
+ * around it, the map, the pollutants behind it and the history.
+ *
+ * `home` keeps the compact homepage composition; `page` is the full place
+ * page used by /near and follows the same rhythm as city and station pages.
  */
 export function PlaceReading({
   report,
   point,
   trend,
   search,
+  variant = "home",
 }: {
   report: PlaceReport;
-  point: { lat: number; lon: number } | null;
-  trend: React.ReactNode;
-  search: React.ReactNode;
+  point: Point;
+  trend: ReactNode;
+  search: ReactNode;
+  variant?: "home" | "page";
 }) {
   const nearest = report.nearest;
-  const official = nearest ? officialStation(nearest) : null;
-  const distance =
-    report.distanceKm != null && Number.isFinite(report.distanceKm)
-      ? `${report.distanceKm.toFixed(1)} km`
-      : "—";
 
-  if (!nearest || !official) {
+  if (!nearest) {
     return (
       <>
         <ReadingStage
           poster={
             <div className="hero is-quiet">
-              <p className="kicker">Your nearest monitor</p>
-              <h1 className="ask-title">No official number here yet.</h1>
+              <p className="kicker">Nearest station</p>
+              <h1 className="ask-title">No station found nearby.</h1>
               <p className="lede">
-                CPCB did not publish enough pollutants at the closest station to
-                set a National Air Quality Index.
+                We could not find a station near this location. Search for a
+                city instead.
               </p>
               {search}
             </div>
@@ -57,13 +69,61 @@ export function PlaceReading({
     );
   }
 
+  return variant === "page" ? (
+    <NearPage
+      report={report}
+      nearest={nearest}
+      point={point}
+      trend={trend}
+      search={search}
+    />
+  ) : (
+    <HomeReading
+      report={report}
+      nearest={nearest}
+      point={point}
+      trend={trend}
+      search={search}
+    />
+  );
+}
+
+function distanceText(report: PlaceReport): string | null {
+  return report.distanceKm != null && Number.isFinite(report.distanceKm)
+    ? `${report.distanceKm.toFixed(1)} km`
+    : null;
+}
+
+function HomeReading({
+  report,
+  nearest,
+  point,
+  trend,
+  search,
+}: {
+  report: PlaceReport;
+  nearest: StationAqi;
+  point: Point;
+  trend: ReactNode;
+  search: ReactNode;
+}) {
+  const official = officialStation(nearest);
+  const distance = distanceText(report);
+
   return (
     <>
       <ReadingStage
         poster={
-          <section className={heroClass(official.band)} style={heroStyle(official.band)}>
+          <section
+            className={heroClass(official.band)}
+            style={heroStyle(official.band)}
+          >
             <HeroHead
-              kicker={`${nearest.city} · ${nearest.state}`}
+              kicker={
+                distance
+                  ? `Nearest station · ${distance} away`
+                  : "Nearest station"
+              }
               href={stationPath(nearest.slug)}
               title={nearest.name}
             />
@@ -77,56 +137,186 @@ export function PlaceReading({
           </section>
         }
         facts={
-          <FactCard
-            facts={[
-              { label: "Distance", value: distance },
-              {
-                label: "Set by",
-                value: nearest.prominent ? pollutantLabel(nearest.prominent) : "—",
-              },
-              {
-                label: "City average",
-                value: report.city ? <CityAverageLink city={report.city} /> : "—",
-              },
-              {
-                label: "Monitors nearby",
-                value: `${report.stations.length}`,
-              },
-            ]}
-            note={
-              <>
-                The nearest government monitor, not the air on your street.{" "}
+          <>
+            <FactCard
+              facts={[
+                {
+                  label: "Distance",
+                  icon: "route",
+                  value: distance ?? "—",
+                },
+                {
+                  label: "Set by",
+                  icon: "pollutant",
+                  value:
+                    official.aqi != null && nearest.prominent
+                      ? pollutantLabel(nearest.prominent)
+                      : "—",
+                },
+                {
+                  label: report.city
+                    ? `${report.city.city} average`
+                    : "City average",
+                  icon: "city",
+                  value: report.city ? (
+                    <CityAverageLink city={report.city} />
+                  ) : (
+                    "—"
+                  ),
+                },
+                {
+                  label: "Stations in city",
+                  icon: "station",
+                  value: `${report.stations.length}`,
+                },
+              ]}
+              note={
                 <Link className="fact-link" href={stationPath(nearest.slug)}>
-                  Open the station
+                  Open station page
                 </Link>
-              </>
-            }
-          >
-            <WeatherCard latitude={nearest.latitude} longitude={nearest.longitude} />
-          </FactCard>
+              }
+            />
+            <WeatherCard
+              latitude={nearest.latitude}
+              longitude={nearest.longitude}
+            />
+          </>
         }
         map={
-            <StationMap
-              pins={stationPins(report.nearby)}
-              activeSlug={nearest.slug}
-              user={point}
-              hereLabel="Nearby"
-            />
+          <StationMap
+            pins={stationPins(report.nearby)}
+            activeSlug={nearest.slug}
+            user={point}
+            hereLabel="Nearby"
+          />
         }
       />
-      <section className="section">
-        <div className="section-head">
-          <h2 className="section-title">What sets this number</h2>
-          <p className="section-sub">
-            Open a tile to see what the pollutant is.
-          </p>
-        </div>
-        <PollutantBoard pollutants={nearest.pollutants} />
-        <p className="meters-note">These are index points, not concentrations.</p>
-      </section>
+      <PollutantsSection station={nearest} />
       <SpikeStrip spike={report.spike} />
       {trend}
       <div className="search-again">{search}</div>
     </>
+  );
+}
+
+function NearPage({
+  report,
+  nearest,
+  point,
+  trend,
+  search,
+}: {
+  report: PlaceReport;
+  nearest: StationAqi;
+  point: Point;
+  trend: ReactNode;
+  search: ReactNode;
+}) {
+  const official = officialStation(nearest);
+  const distance = distanceText(report);
+  const city = report.city;
+  const inCity = sortStations(report.stations);
+  const listed = new Set(inCity.map((station) => station.slug));
+  const around = report.nearby
+    .filter(
+      (station) => !listed.has(station.slug) && station.slug !== nearest.slug,
+    )
+    .slice(0, 6);
+
+  return (
+    <PlaceLayout
+      head={
+        <PlaceHead
+          crumbs={[
+            { label: "Home", href: "/" },
+            { label: nearest.state },
+            {
+              label: nearest.city,
+              href: city ? cityPath(city.slug) : undefined,
+            },
+          ]}
+          title={nearest.name}
+          sub={
+            distance ? `Nearest station · ${distance} away` : "Nearest station"
+          }
+          share={{
+            title: `${nearest.name} air quality`,
+            text:
+              official.aqi != null
+                ? `${nearest.name} AQI is ${official.aqi}${official.band ? ` (${official.band})` : ""} right now.`
+                : `Air quality at ${nearest.name}.`,
+            path: stationPath(nearest.slug),
+          }}
+        />
+      }
+      hero={
+        <PlaceHero
+          kicker="Station AQI"
+          aqi={official.aqi}
+          band={official.band}
+          updatedAt={nearest.updatedAt}
+          missing="words"
+        />
+      }
+      side={
+        <>
+          <FactCard
+            facts={[
+              { label: "Distance", icon: "route", value: distance ?? "—" },
+              {
+                label: "Set by",
+                icon: "pollutant",
+                value:
+                  official.aqi != null && nearest.prominent
+                    ? pollutantLabel(nearest.prominent)
+                    : "—",
+              },
+              {
+                label: city ? `${city.city} average` : "City average",
+                icon: "city",
+                value: city ? <CityAverageLink city={city} /> : "—",
+              },
+              {
+                label: "Stations in city",
+                icon: "station",
+                value: `${report.stations.length}`,
+              },
+            ]}
+          />
+          <WeatherCard
+            latitude={nearest.latitude}
+            longitude={nearest.longitude}
+          />
+          <BandLegend band={official.band} />
+        </>
+      }
+      map={
+        <StationMap
+          pins={stationPins(report.nearby)}
+          activeSlug={nearest.slug}
+          user={point}
+          hereLabel="Nearby"
+        />
+      }
+    >
+      <PollutantsSection station={nearest} />
+      <SpikeStrip spike={report.spike} />
+      {trend}
+      {inCity.length > 1 ? (
+        <PlaceSection
+          id="stations"
+          title={`Stations in ${nearest.city}`}
+          sub="Ranked by AQI, highest first."
+        >
+          <StationRows stations={inCity} activeSlug={nearest.slug} />
+        </PlaceSection>
+      ) : null}
+      {around.length > 0 ? (
+        <PlaceSection id="nearby" title="Nearby" sub="Stations around you.">
+          <NearbyCards stations={around} />
+        </PlaceSection>
+      ) : null}
+      <div className="search-again">{search}</div>
+    </PlaceLayout>
   );
 }

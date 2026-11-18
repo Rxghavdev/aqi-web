@@ -3,58 +3,69 @@
 import { useId, useState } from "react";
 import { bandAccent, bandFor, bandTextColor } from "@/lib/aqi";
 import type { PollutantId, PollutantReading } from "@/lib/types";
+import { Icon } from "./icons";
+import { meterRows } from "./pollutants";
 import { bandLabel, pollutantLabel } from "./text";
 
-const METER_ORDER: PollutantId[] = [
-  "PM2.5",
-  "PM10",
-  "OZONE",
-  "NO2",
-  "SO2",
-  "CO",
-  "NH3",
-  "PB",
-];
+type Copy = { hint: string; what: string; sources: string };
 
-const WHAT_IT_IS: Record<PollutantId, string> = {
-  "PM2.5":
-    "Fine particles under 2.5 micrometres. Small enough to reach deep into the lungs, and usually the driver in north Indian winters.",
-  PM10: "Coarser dust, smoke and road grit, up to 10 micrometres. It settles faster but still inflames the airways.",
-  NO2: "Nitrogen dioxide, mostly from traffic and fuel burning. Peaks near congested roads.",
-  SO2: "Sulphur dioxide, mainly from burning coal and oil. A marker of industrial and domestic fuel use.",
-  CO: "Carbon monoxide from incomplete burning. CPCB compares an 8-hour average rather than an instant reading.",
-  OZONE: "Ground-level ozone, formed in sunlight from other pollutants. CPCB compares an 8-hour average, so it peaks in the afternoon.",
-  NH3: "Ammonia, often from fertiliser, livestock and waste. It also feeds the chemistry that makes fine particles.",
-  PB: "Lead, which travels as fine dust and stays in the air. Monitored at a small number of stations.",
+const COPY: Record<PollutantId, Copy> = {
+  "PM2.5": {
+    hint: "Fine particles",
+    what: "Particles smaller than 2.5 micrometres, a fraction of the width of a hair.",
+    sources: "Vehicle exhaust, burning of crops, wood and waste, and industry.",
+  },
+  PM10: {
+    hint: "Coarse dust",
+    what: "Dust and soot up to 10 micrometres across.",
+    sources: "Road and construction dust, vehicle wear and open burning.",
+  },
+  NO2: {
+    hint: "Nitrogen dioxide",
+    what: "A gas formed when fuel burns at high temperature.",
+    sources: "Vehicles, power plants and industry. Highest near busy roads.",
+  },
+  SO2: {
+    hint: "Sulphur dioxide",
+    what: "A gas released when fuel containing sulphur burns.",
+    sources: "Coal and oil burning in power plants and factories.",
+  },
+  CO: {
+    hint: "Carbon monoxide",
+    what: "A gas produced by incomplete burning. The index uses an 8-hour average.",
+    sources: "Vehicles, cooking fires and waste burning.",
+  },
+  OZONE: {
+    hint: "Ground-level ozone",
+    what: "A gas that forms in sunlight from other pollutants. The index uses an 8-hour average.",
+    sources:
+      "Not emitted directly. It forms from vehicle and industrial gases and peaks in the afternoon.",
+  },
+  NH3: {
+    hint: "Ammonia",
+    what: "A gas with a sharp smell.",
+    sources: "Fertiliser, livestock and waste.",
+  },
+  PB: {
+    hint: "Lead dust",
+    what: "A metal carried in the air as fine dust. Few stations measure it.",
+    sources: "Battery recycling, smelters and some industrial processes.",
+  },
 };
 
-export function meterRows(pollutants: PollutantReading[]): PollutantReading[] {
-  const byId = new Map(pollutants.map((item) => [item.id, item]));
-  const rows: PollutantReading[] = [];
-  for (const id of METER_ORDER) {
-    const reading = byId.get(id);
-    if (reading && numeric(reading.subIndex)) rows.push(reading);
-  }
-  for (const reading of pollutants) {
-    if (rows.some((row) => row.id === reading.id)) continue;
-    if (numeric(reading.subIndex)) rows.push(reading);
-  }
-  return rows;
-}
-
-function numeric(value: number | null): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
 /**
- * One tile per pollutant. Opening a tile reveals the detail directly beneath
- * the row, and opening another closes the first, so the section never
- * stretches into a wall of text.
+ * One tile per pollutant. Each tile is a three-column grid: name and hint,
+ * value and band, then a chevron in its own 44px column, so nothing can sit
+ * on top of anything else. One tile is open at a time; the panel grows with a
+ * height transition and the meter shows the sub-index on the 0–500 scale.
  */
 export function PollutantBoard({
   pollutants,
+  showSetter = true,
 }: {
   pollutants: PollutantReading[];
+  /** False when the station has no AQI, so no pollutant "sets" anything. */
+  showSetter?: boolean;
 }) {
   const rows = meterRows(pollutants);
   const baseId = useId();
@@ -62,68 +73,111 @@ export function PollutantBoard({
   if (rows.length === 0) return null;
 
   const highest = Math.max(...rows.map((row) => row.subIndex ?? 0));
-  const current = rows.find((row) => row.id === open) ?? null;
+  const setter = rows.find((row) => row.subIndex === highest) ?? rows[0];
 
   return (
-    <div className="board">
-      <ul className="board-list">
-        {rows.map((reading) => {
-          const value = reading.subIndex ?? 0;
-          const width = Math.max(2, Math.min(100, (value / 500) * 100));
-          const band = bandFor(value);
-          const top = value === highest;
-          const expanded = open === reading.id;
-          const panelId = `${baseId}-${reading.id}-panel`;
-          return (
-            <li key={reading.id}>
+    <ul className="ptiles">
+      {rows.map((reading) => {
+        const value = reading.subIndex ?? 0;
+        const percent = Math.max(1.5, Math.min(100, (value / 500) * 100));
+        const band = bandFor(value);
+        const top = showSetter && value === highest;
+        const expanded = open === reading.id;
+        const copy = COPY[reading.id];
+        const buttonId = `${baseId}-${reading.id}-btn`;
+        const panelId = `${baseId}-${reading.id}-panel`;
+        const name = pollutantLabel(reading.id);
+        return (
+          <li key={reading.id} className={expanded ? "ptile is-open" : "ptile"}>
+            <h3 className="ptile-heading">
               <button
+                id={buttonId}
                 type="button"
-                className={expanded ? "pollutant is-open" : "pollutant"}
+                className="ptile-btn"
                 aria-expanded={expanded}
-                aria-controls={expanded ? panelId : undefined}
+                aria-controls={panelId}
                 onClick={() => setOpen(expanded ? null : reading.id)}
               >
-                <span className="pollutant-top">
-                  <span className="pollutant-label">{pollutantLabel(reading.id)}</span>
-                  {top ? <span className="pollutant-flag">Sets the number</span> : null}
+                <span className="ptile-name">
+                  <span className="ptile-title">
+                    <span className="ptile-label">{name}</span>
+                    {top ? (
+                      <span className="ptile-tag">Sets the AQI</span>
+                    ) : null}
+                  </span>
+                  <span className="ptile-hint">{copy.hint}</span>
                 </span>
-                <span className="pollutant-read">
-                  <span className="pollutant-value">{value}</span>
-                  <span className="pollutant-band" style={{ color: bandTextColor(band) }}>
-                    {bandLabel(band)}
+                <span className="ptile-read">
+                  <span className="ptile-value">
+                    <span className="sr-only">Sub-index </span>
+                    {value}
+                  </span>
+                  <span
+                    className="ptile-chip"
+                    style={{ borderColor: bandBorder(band) }}
+                  >
+                    <span
+                      className="ptile-dot"
+                      style={{ background: bandAccent(band) }}
+                      aria-hidden="true"
+                    />
+                    <span style={{ color: bandTextColor(band) }}>
+                      {bandLabel(band)}
+                    </span>
                   </span>
                 </span>
-                <span className="pollutant-track" aria-hidden="true">
+                <span className="ptile-chev" aria-hidden="true">
+                  <Icon name="chevron" size={20} />
+                </span>
+                <span className="ptile-meter" aria-hidden="true">
                   <span
-                    className="pollutant-fill"
-                    style={{ width: `${width}%`, background: bandAccent(band) }}
+                    className="ptile-fill"
+                    style={{
+                      width: `${percent}%`,
+                      background: bandAccent(band),
+                    }}
                   />
                 </span>
-                <span className="pollutant-cue" aria-hidden="true" />
               </button>
-            </li>
-          );
-        })}
-      </ul>
-      {current ? (
-        <div
-          className="pollutant-detail"
-          id={`${baseId}-${current.id}-panel`}
-          role="region"
-          aria-live="polite"
-        >
-          <p className="pollutant-detail-title">
-            {pollutantLabel(current.id)}
-            <span>sub-index {current.subIndex} of 500</span>
-          </p>
-          <p>{WHAT_IT_IS[current.id]}</p>
-          <p className="pollutant-detail-note">
-            CPCB publishes this as an index point, not as a concentration in
-            micrograms. The station number is the worst sub-index across its
-            pollutants.
-          </p>
-        </div>
-      ) : null}
-    </div>
+            </h3>
+            <div
+              id={panelId}
+              className="ptile-panel"
+              role="region"
+              aria-labelledby={buttonId}
+              inert={!expanded}
+            >
+              <div className="ptile-panel-inner">
+                <dl className="ptile-copy">
+                  <div>
+                    <dt>What it is</dt>
+                    <dd>{copy.what}</dd>
+                  </div>
+                  <div>
+                    <dt>Main sources</dt>
+                    <dd>{copy.sources}</dd>
+                  </div>
+                  <div>
+                    <dt>Reading</dt>
+                    <dd>
+                      Sub-index {value} of 500, {bandLabel(band)}.{" "}
+                      {showSetter
+                        ? top
+                          ? "The highest at this station, so it sets the AQI."
+                          : `The AQI is set by ${pollutantLabel(setter.id)} at ${highest}.`
+                        : ""}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
   );
+}
+
+function bandBorder(band: ReturnType<typeof bandFor>): string {
+  return `color-mix(in srgb, ${bandAccent(band)} 55%, transparent)`;
 }

@@ -1,11 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter_Tight } from "next/font/google";
 import Script from "next/script";
 import { LocationSheet } from "@/components/place/LocationSheet";
 import { Footer } from "@/components/shell/Footer";
 import { Header } from "@/components/shell/Header";
-import { SITE_DESCRIPTION, siteUrl } from "@/lib/site";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, siteUrl } from "@/lib/site";
 import "./globals.css";
+import "../styles/shell.css";
+import "../styles/reading.css";
+import "../styles/map.css";
+import "../styles/trend.css";
+import "../styles/pages.css";
 
 const app = Inter_Tight({
   subsets: ["latin"],
@@ -16,10 +21,30 @@ const app = Inter_Tight({
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   title: {
-    default: "AQI Desk — official India AQI from CPCB stations",
-    template: "%s · AQI Desk",
+    default: SITE_TITLE,
+    template: `%s · ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    locale: "en_IN",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f4efe6" },
+    { media: "(prefers-color-scheme: dark)", color: "#100e0c" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -30,8 +55,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col antialiased">
-        <Script id="aqi-desk-theme" strategy="beforeInteractive">
-          {`(function(){try{var k="aqi-desk-theme";var t=localStorage.getItem(k);if(t!=="light"&&t!=="dark"){t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme="light"}})();`}
+        <Script id="hawa-theme" strategy="beforeInteractive">
+          {`(function(){try{var t=localStorage.getItem("hawa-theme");if(t!=="light"&&t!=="dark"){t=localStorage.getItem("aqi-desk-theme")}if(t!=="light"&&t!=="dark"){t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme="light"}})();`}
         </Script>
         <a className="skip-link" href="#content">
           Skip to content

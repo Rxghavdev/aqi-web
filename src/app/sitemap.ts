@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import { unstable_rethrow } from "next/navigation";
 import { siteUrl } from "@/lib/site";
 
-const STATIC_PATHS = ["/", "/methodology", "/about", "/privacy"] as const;
+const STATIC_PATHS = ["/", "/cities", "/methodology", "/about", "/privacy"] as const;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteUrl();

@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test src/lib/aqi.test.ts src/lib/aggregate.test.ts src/lib/history.test.ts",
-    "sync": "node --experimental-strip-types scripts/sync.ts"
+    "test": "node --experimental-strip-types --test src/lib/aqi.test.ts src/lib/aggregate.test.ts src/lib/history.test.ts src/components/trend/geometry.test.ts src/lib/lru.test.ts src/lib/single-flight.test.ts src/lib/rate-limit.test.ts src/lib/api.test.ts src/lib/log.test.ts src/lib/model-backfill.test.ts src/lib/snapshot.test.ts src/lib/history-robust.test.ts src/lib/shared.test.ts",
+    "sync": "node --experimental-strip-types scripts/sync.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "maplibre-gl": "^6.19.0",

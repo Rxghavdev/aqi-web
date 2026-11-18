@@ -1,7 +1,7 @@
 import { slugify } from "./aggregate.ts";
 import { haversineKm, roundKm } from "./geo.ts";
 import { kickRefresh } from "./refresh.ts";
-import { hourlyModelAqi } from "./sources/open-meteo.ts";
+import { hourlyModelAqiWithin } from "./sources/open-meteo.ts";
 import { readSnapshot, type SnapshotFile } from "./snapshot.ts";
 import type {
   CityAqi,
@@ -427,7 +427,9 @@ async function spikeFor(
   latitude: number,
   longitude: number,
 ): Promise<Spike | null> {
-  const model = await hourlyModelAqi(latitude, longitude);
+  // Optional enrichment: from memory, or within a short deadline, or skipped.
+  // The slow fetch carries on in the background and fills the cache.
+  const model = await hourlyModelAqiWithin(latitude, longitude);
   if (!model.ok) return null;
 
   const officialAqi =

@@ -1,13 +1,13 @@
 import { bandAccent } from "@/lib/aqi";
 import type { Band } from "@/lib/types";
 
-const BANDS: Array<{ band: Band; span: number }> = [
-  { band: "Good", span: 50 },
-  { band: "Satisfactory", span: 50 },
-  { band: "Moderate", span: 100 },
-  { band: "Poor", span: 100 },
-  { band: "Very Poor", span: 100 },
-  { band: "Severe", span: 100 },
+const BANDS: Array<{ band: Band; span: number; range: string }> = [
+  { band: "Good", span: 50, range: "0–50" },
+  { band: "Satisfactory", span: 50, range: "51–100" },
+  { band: "Moderate", span: 100, range: "101–200" },
+  { band: "Poor", span: 100, range: "201–300" },
+  { band: "Very Poor", span: 100, range: "301–400" },
+  { band: "Severe", span: 100, range: "401–500" },
 ];
 
 /**
@@ -48,5 +48,33 @@ export function BandScale({
         <span>500</span>
       </div>
     </div>
+  );
+}
+
+/** The six bands with their index ranges; the current one is highlighted. */
+export function BandLegend({ band }: { band: Band | null }) {
+  return (
+    <section className="legend" aria-label="India AQI scale">
+      <h2 className="legend-title">India AQI scale</h2>
+      <ul className="legend-list">
+        {BANDS.map((entry) => (
+          <li
+            key={entry.band}
+            className={
+              entry.band === band ? "legend-row is-current" : "legend-row"
+            }
+            aria-current={entry.band === band ? "true" : undefined}
+          >
+            <span
+              className="legend-swatch"
+              style={{ background: bandAccent(entry.band) }}
+              aria-hidden="true"
+            />
+            <span className="legend-name">{entry.band}</span>
+            <span className="legend-range">{entry.range}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

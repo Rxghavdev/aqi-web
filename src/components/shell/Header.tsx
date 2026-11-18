@@ -1,21 +1,27 @@
-import Link from "next/link";
-import { SITE_NAME } from "@/lib/site";
+import { Suspense } from "react";
+import { Logo } from "@/components/brand/Logo";
+import { SearchLauncher } from "@/components/search/SearchLauncher";
+import { HeaderScroll } from "./HeaderScroll";
+import { DesktopNav, MobileNav } from "./Nav";
 import { ThemeToggle } from "./ThemeToggle";
 
 export function Header() {
   return (
-    <header className="site-header">
+    <header id="site-header" className="site-header">
       <div className="site-header-inner">
-        <Link href="/" className="wordmark">
-          <span className="wordmark-name">{SITE_NAME}</span>
-          <span className="wordmark-caption">for India</span>
-        </Link>
-        <nav className="site-nav" aria-label="Primary">
-          <Link href="/#cities">Cities</Link>
-          <Link href="/methodology">Methodology</Link>
+        <Logo />
+        <Suspense fallback={null}>
+          <DesktopNav />
+        </Suspense>
+        <div className="site-actions">
+          <SearchLauncher />
           <ThemeToggle />
-        </nav>
+          <Suspense fallback={null}>
+            <MobileNav />
+          </Suspense>
+        </div>
       </div>
+      <HeaderScroll targetId="site-header" />
     </header>
   );
 }

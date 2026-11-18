@@ -1,4 +1,4 @@
-export const LOC_KEY = "aqi-desk-loc";
+export const LOC_KEY = "hawa-loc";
 
 export type SavedPoint = { lat: number; lon: number };
 

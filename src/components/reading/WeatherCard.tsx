@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Icon, weatherIconName } from "./icons";
 
 type Weather = {
   temperatureC: number | null;
@@ -8,11 +9,13 @@ type Weather = {
   windKph: number | null;
   uvIndex: number | null;
   label: string;
+  code: number | null;
 };
 
 /**
- * Current conditions beside the reading. Weather is context, never the
- * air-quality number, so a failure here leaves no gap and no message.
+ * Current conditions beside the reading. The card reserves its final height
+ * while loading, and a failed request removes it without a message: weather
+ * is context, never part of the AQI.
  */
 export function WeatherCard({
   latitude,
@@ -21,12 +24,17 @@ export function WeatherCard({
   latitude: number;
   longitude: number;
 }) {
-  const [weather, setWeather] = useState<Weather | null | "loading">("loading");
+  const key = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+  const [result, setResult] = useState<{
+    key: string;
+    weather: Weather | null;
+  } | null>(null);
+  const weather: Weather | null | "loading" =
+    result && result.key === key ? result.weather : "loading";
 
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
-    setWeather("loading");
     fetch(
       `/api/weather?lat=${encodeURIComponent(latitude.toFixed(4))}&lon=${encodeURIComponent(longitude.toFixed(4))}`,
       { signal: controller.signal, headers: { accept: "application/json" } },
@@ -34,26 +42,26 @@ export function WeatherCard({
       .then(async (response) => {
         if (!active) return;
         if (!response.ok) {
-          setWeather(null);
+          setResult({ key, weather: null });
           return;
         }
         const data: unknown = await response.json();
         if (!active) return;
-        setWeather(read(data));
+        setResult({ key, weather: read(data) });
       })
       .catch((error: unknown) => {
         if (!active || controller.signal.aborted || isAbort(error)) return;
-        setWeather(null);
+        setResult({ key, weather: null });
       });
     return () => {
       active = false;
       controller.abort();
     };
-  }, [latitude, longitude]);
+  }, [key, latitude, longitude]);
 
   if (weather === "loading") {
     return (
-      <section className="weather-card" aria-busy="true">
+      <section className="weather" aria-busy="true" aria-label="Weather">
         <p className="sr-only">Loading the weather.</p>
         <div className="weather-skeleton" aria-hidden="true" />
       </section>
@@ -62,33 +70,51 @@ export function WeatherCard({
   if (!weather) return null;
 
   return (
-    <section className="weather-card" aria-label="Weather at this station">
+    <section className="weather" aria-label="Weather at this station">
       <div className="weather-top">
+        <span className="weather-icon">
+          <Icon name={weatherIconName(weather.code, weather.label)} size={30} />
+        </span>
         <p className="weather-temp">
-          {weather.temperatureC == null ? "—" : Math.round(weather.temperatureC)}
+          {weather.temperatureC == null
+            ? "—"
+            : Math.round(weather.temperatureC)}
           <span>°C</span>
         </p>
         <p className="weather-label">{weather.label}</p>
       </div>
       <dl className="weather-facts">
         <div>
-          <dt>Humidity</dt>
-          <dd>{weather.humidity == null ? "—" : `${Math.round(weather.humidity)}%`}</dd>
-        </div>
-        <div>
-          <dt>Wind</dt>
+          <dt>
+            <Icon name="droplet" size={15} />
+            Humidity
+          </dt>
           <dd>
-            {weather.windKph == null ? "—" : `${weather.windKph.toFixed(1)} km/h`}
+            {weather.humidity == null
+              ? "—"
+              : `${Math.round(weather.humidity)}%`}
           </dd>
         </div>
         <div>
-          <dt>UV</dt>
+          <dt>
+            <Icon name="wind" size={15} />
+            Wind
+          </dt>
           <dd>
-            {weather.uvIndex == null ? "—" : weather.uvIndex.toFixed(1)}
+            {weather.windKph == null
+              ? "—"
+              : `${Math.round(weather.windKph)} km/h`}
           </dd>
+        </div>
+        <div>
+          <dt>
+            <Icon name="uv" size={15} />
+            UV peak
+          </dt>
+          <dd>{weather.uvIndex == null ? "—" : weather.uvIndex.toFixed(1)}</dd>
         </div>
       </dl>
-      <p className="weather-note">Weather from Open-Meteo. It does not change the CPCB number.</p>
+      <p className="weather-note">Weather by Open-Meteo</p>
     </section>
   );
 }
@@ -106,6 +132,7 @@ function read(data: unknown): Weather | null {
     windKph: num(item.windKph),
     uvIndex: num(item.uvIndex),
     label: typeof item.label === "string" ? item.label : "Conditions",
+    code: num(item.code),
   };
   if (
     weather.temperatureC == null &&

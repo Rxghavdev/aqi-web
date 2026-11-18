@@ -8,6 +8,7 @@ import { bandAccent } from "@/lib/aqi";
 import { PlaceReading } from "@/components/place/PlaceReading";
 import { PlaceSearch } from "@/components/search/PlaceSearch";
 import { TrendChart } from "@/components/trend/TrendChart";
+import { SITE_TAGLINE } from "@/lib/site";
 import { readSavedPoint, type SavedPoint } from "./storage";
 
 export function HomeStage({ ranking }: { ranking: ReactNode }) {
@@ -40,7 +41,9 @@ function HomeSkeleton() {
         <div className="reading-card">
           <div className="hero is-quiet">
             {/* The server shell needs a heading even before the point loads. */}
-            <h1 className="ask-title">The monitor nearest you, on India&apos;s scale.</h1>
+            <h1 className="ask-title">
+              How&apos;s the air near you?
+            </h1>
             <p className="sr-only">Loading the nearest station.</p>
             <div className="skeleton-numeral" aria-hidden="true" />
             <div className="skeleton-line" aria-hidden="true" />
@@ -56,11 +59,12 @@ function AskHome() {
   return (
     <div className="ask-home">
       <div className="ask-copy">
-        <p className="kicker">India&apos;s official air number</p>
-        <h1 className="ask-title">The monitor nearest you, on India&apos;s scale.</h1>
+        <p className="kicker">{SITE_TAGLINE.replace(/\.$/, "")}</p>
+        <h1 className="ask-title">
+          How&apos;s the air near you?
+        </h1>
         <p className="lede">
-          One number the government publishes. Not a guess from your street, and
-          not a model dressed up as official.
+          Live AQI for the station nearest you, on India&apos;s official scale.
         </p>
         <PlaceSearch />
       </div>
@@ -76,15 +80,20 @@ function NearestReading({
   point: SavedPoint;
   search: ReactNode;
 }) {
-  const [report, setReport] = useState<PlaceReport | null | "loading" | "error">("loading");
+  const [report, setReport] = useState<
+    PlaceReport | null | "loading" | "error"
+  >("loading");
 
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
-    fetch(`/api/place?lat=${encodeURIComponent(point.lat)}&lon=${encodeURIComponent(point.lon)}`, {
-      signal: controller.signal,
-      headers: { accept: "application/json" },
-    })
+    fetch(
+      `/api/place?lat=${encodeURIComponent(point.lat)}&lon=${encodeURIComponent(point.lon)}`,
+      {
+        signal: controller.signal,
+        headers: { accept: "application/json" },
+      },
+    )
       .then(async (response) => {
         if (!active) return;
         if (!response.ok) {
@@ -133,8 +142,16 @@ function isPlace(data: unknown): data is PlaceReport {
   const nearest = (data as { nearest?: unknown }).nearest;
   if (nearest == null) return true;
   if (typeof nearest !== "object") return false;
-  const station = nearest as { slug?: unknown; name?: unknown; pollutants?: unknown };
-  return typeof station.slug === "string" && typeof station.name === "string" && Array.isArray(station.pollutants);
+  const station = nearest as {
+    slug?: unknown;
+    name?: unknown;
+    pollutants?: unknown;
+  };
+  return (
+    typeof station.slug === "string" &&
+    typeof station.name === "string" &&
+    Array.isArray(station.pollutants)
+  );
 }
 
 function isAbort(error: unknown): boolean {
