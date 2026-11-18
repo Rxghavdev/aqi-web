@@ -1,6 +1,7 @@
 import { mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { aggregateRecords } from "./aggregate.ts";
+import { openHistory, recordOfficial } from "./history.ts";
 import { fetchAllCpcbRecords } from "./sources/cpcb.ts";
 import type { CityAqi, StationAqi } from "./types.ts";
 
@@ -86,6 +87,14 @@ async function doRefresh(force: boolean): Promise<SnapshotFile> {
       rowCount: records.length,
     };
     await writeSnapshot(snapshot);
+    try {
+      recordOfficial(openHistory(), snapshot);
+    } catch (error) {
+      console.error(
+        "history write failed",
+        error instanceof Error ? error.message : "unknown",
+      );
+    }
     return snapshot;
   } catch (error) {
     if (memory) memory.refreshFailed = true;

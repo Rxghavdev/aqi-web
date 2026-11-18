@@ -27,10 +27,6 @@ export function stationPath(slug: string): string {
   return `/station/${encodeURIComponent(slug)}`;
 }
 
-export function mapHref(latitude: number, longitude: number): string {
-  return `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=14/${latitude}/${longitude}`;
-}
-
 export function finiteAqi(aqi: number | null): number | null {
   return aqi != null && Number.isFinite(aqi) ? aqi : null;
 }
@@ -95,4 +91,42 @@ export function stationDescription(station: StationAqi): string {
 export function aqiName(aqi: number | null, band: Band | null): string {
   if (aqi == null) return "No official AQI";
   return `AQI ${aqi}, ${bandLabel(band)}`;
+}
+
+const STAMP_MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+export function formatStamp(value: string | null): string | null {
+  if (!value) return null;
+  const match = /^(\d{2})-(\d{2})-(\d{4})(?:\s+(\d{2}):(\d{2}))?/.exec(value.trim());
+  if (!match) return value;
+  const month = STAMP_MONTHS[Number(match[2]) - 1];
+  if (!month) return value;
+  const clock = match[4] && match[5] ? `, ${match[4]}:${match[5]}` : "";
+  return `${Number(match[1])} ${month} ${match[3]}${clock}`;
+}
+
+export function stampIsToday(value: string | null, now = new Date()): boolean {
+  if (!value) return false;
+  const match = /^(\d{2})-(\d{2})-(\d{4})/.exec(value.trim());
+  if (!match) return false;
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+  return today === `${match[3]}-${match[2]}-${match[1]}`;
 }

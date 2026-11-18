@@ -1,34 +1,40 @@
-import { bandAccent, bandNumberColor, healthLine } from "@/lib/aqi";
+import { hookLine } from "@/lib/voice";
 import type { Band } from "@/lib/types";
-import { aqiName, bandLabel, finiteAqi } from "./text";
+import { aqiName, bandLabel, finiteAqi, formatStamp, stampIsToday } from "./text";
 
 export function AqiFigure({
   aqi,
   band,
+  updatedAt = null,
   missing = "dash",
 }: {
   aqi: number | null;
   band: Band | null;
+  updatedAt?: string | null;
   missing?: "dash" | "words";
 }) {
   const value = finiteAqi(aqi);
-  const accent = bandAccent(band);
-  const numberColor = bandNumberColor(value == null ? null : band);
+  const shown = value == null ? null : band;
   const words = value == null && missing === "words";
+  const stamp = formatStamp(updatedAt);
+  const live = value != null && stampIsToday(updatedAt);
 
   return (
     <div className="aqi-figure">
-      <div className="aqi-bar" style={{ backgroundColor: accent }} aria-hidden="true" />
-      <p className="band-word" style={{ color: accent }}>
-        {bandLabel(band)}
-      </p>
-      <p className={words ? "aqi-missing" : "aqi-numeral"} style={{ color: numberColor }}>
+      <p className={words ? "aqi-missing" : "aqi-numeral"}>
         <span aria-hidden="true">{words ? "No official AQI" : (value ?? "—")}</span>
-        <span className="sr-only">{aqiName(value, band)}</span>
+        <span className="sr-only">{aqiName(value, shown)}</span>
       </p>
-      <p className="health">
-        {healthLine(value == null && missing === "words" ? null : band)}
+      <p className="band-name">{bandLabel(shown ?? (words ? null : band))}</p>
+      <p className="hook-line">{hookLine(shown)}</p>
+      <p className="live-row">
+        {live ? <span className="live-dot" aria-hidden="true" /> : null}
+        <span>{live ? "Live" : "Updated"}</span>
+        <span className="live-time">
+          {stamp ?? "No update time was published"}
+        </span>
       </p>
+      <p className="scale-line">CPCB National Air Quality Index</p>
     </div>
   );
 }

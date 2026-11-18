@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --test src/lib/aqi.test.ts src/lib/aggregate.test.ts",
+    "test": "node --experimental-strip-types --test src/lib/aqi.test.ts src/lib/aggregate.test.ts src/lib/history.test.ts",
     "sync": "node --experimental-strip-types scripts/sync.ts"
   },
   "dependencies": {

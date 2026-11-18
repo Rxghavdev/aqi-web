@@ -53,9 +53,22 @@ export async function getCity(
 }
 
 export async function getStation(slug: string): Promise<StationAqi | null> {
+  const page = await getStationPage(slug);
+  return page?.station ?? null;
+}
+
+export async function getStationPage(
+  slug: string,
+): Promise<{ station: StationAqi; city: CityAqi | null } | null> {
   const { snapshot } = await readSnapshot();
   if (!snapshot) return null;
-  return snapshot.stations.find((station) => station.slug === slug) ?? null;
+  const station = snapshot.stations.find((item) => item.slug === slug);
+  if (!station) return null;
+  const city =
+    snapshot.cities.find(
+      (item) => item.city === station.city && item.state === station.state,
+    ) ?? null;
+  return { station, city };
 }
 
 export async function getPlace(input: {
@@ -66,12 +79,14 @@ export async function getPlace(input: {
   const { snapshot } = await readSnapshot();
   if (!snapshot || snapshot.stations.length === 0) return null;
 
-  const query = input.query?.trim() ?? "";
+  const query = (input.query?.trim() ?? "").slice(0, 80);
   const hasPoint =
     typeof input.lat === "number" &&
     typeof input.lon === "number" &&
-    Number.isFinite(input.lat) &&
-    Number.isFinite(input.lon);
+    input.lat >= -90 &&
+    input.lat <= 90 &&
+    input.lon >= -180 &&
+    input.lon <= 180;
 
   if (hasPoint) {
     return placeFromPoint(snapshot, input.lat as number, input.lon as number, query);
@@ -81,7 +96,7 @@ export async function getPlace(input: {
 }
 
 export async function searchPlaces(query: string): Promise<SearchHit[]> {
-  const trimmed = query.trim();
+  const trimmed = query.trim().slice(0, 80);
   if (!trimmed) return [];
   const { snapshot } = await readSnapshot();
   if (!snapshot) return [];

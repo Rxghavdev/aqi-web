@@ -13,7 +13,7 @@ export function CityListFallback() {
   return (
     <div aria-busy="true">
       <p className="sr-only">Loading cities.</p>
-      <div className="rule-list" aria-hidden="true">
+      <div className="rank-list" aria-hidden="true">
         {Array.from({ length: 6 }, (_, index) => (
           <div key={index} className="skeleton-row" />
         ))}

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { bandAccent, bandNumberColor } from "@/lib/aqi";
 import type { Band, SearchHit } from "@/lib/types";
 import { bandLabel, cityPath, stationPath } from "@/components/reading/text";
+import { writePoint } from "@/components/place/storage";
 
 const BANDS = new Set<Band>([
   "Good",
@@ -32,13 +33,19 @@ export function PlaceSearch() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestRef = useRef(0);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const optionRefs = useRef<Array<HTMLAnchorElement | null>>([]);
   const mounted = useRef(false);
 
   useEffect(() => {
     mounted.current = true;
+    function focusSearch() {
+      inputRef.current?.focus();
+    }
+    window.addEventListener("aqi-desk-focus-search", focusSearch);
     return () => {
       mounted.current = false;
+      window.removeEventListener("aqi-desk-focus-search", focusSearch);
       if (timerRef.current) window.clearTimeout(timerRef.current);
       abortRef.current?.abort();
     };
@@ -134,8 +141,8 @@ export function PlaceSearch() {
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!open || active < 0) return;
-    const hit = hits[active];
+    if (!open || hits.length === 0) return;
+    const hit = hits[active >= 0 ? active : 0];
     if (hit) choose(hit);
   }
 
@@ -155,6 +162,7 @@ export function PlaceSearch() {
         setLocating(false);
         const lat = position.coords.latitude.toFixed(4);
         const lon = position.coords.longitude.toFixed(4);
+        writePoint(Number(lat), Number(lon));
         router.push(`/near?lat=${lat}&lon=${lon}`);
       },
       (error) => {
@@ -193,6 +201,7 @@ export function PlaceSearch() {
         </label>
         <div className="search-field-wrap">
           <input
+            ref={inputRef}
             id={inputId}
             className="search-field"
             role="combobox"
@@ -236,7 +245,10 @@ export function PlaceSearch() {
                       aria-selected={selected}
                       className={selected ? "search-option is-active" : "search-option"}
                       onMouseEnter={() => setActive(index)}
-                      onMouseDown={(event) => event.preventDefault()}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+                        choose(hit);
+                      }}
                       onClick={(event) => {
                         event.preventDefault();
                         choose(hit);

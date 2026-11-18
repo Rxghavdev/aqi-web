@@ -1,16 +1,21 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { StationDistance } from "@/components/place/StationDistance";
 import { AqiFigure } from "@/components/reading/AqiFigure";
-import { loadStation } from "@/components/reading/load";
+import { CityAverageLink } from "@/components/reading/CityAverageLink";
+import { heroClass, heroStyle } from "@/components/reading/hero";
+import { loadStationPage } from "@/components/reading/load";
+import { meterRows, PollutantMeters } from "@/components/reading/PollutantMeters";
 import { ReadingSkeleton } from "@/components/reading/ReadingSkeleton";
+import { TrendChart } from "@/components/trend/TrendChart";
 import {
-  mapHref,
   officialStation,
   pollutantLabel,
   stationDescription,
   stationTitle,
 } from "@/components/reading/text";
+import { bandAccent } from "@/lib/aqi";
 
 type StationParams = Promise<{ slug: string }>;
 
@@ -20,11 +25,11 @@ export async function generateMetadata({
   params: StationParams;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const station = await loadStation(slug);
-  if (!station) notFound();
+  const page = await loadStationPage(slug);
+  if (!page) notFound();
   return {
-    title: stationTitle(station),
-    description: stationDescription(station),
+    title: stationTitle(page.station),
+    description: stationDescription(page.station),
   };
 }
 
@@ -38,58 +43,48 @@ export default function StationPage({ params }: { params: StationParams }) {
 
 async function StationReading({ params }: { params: StationParams }) {
   const { slug } = await params;
-  const station = await loadStation(slug);
-  if (!station) notFound();
+  const page = await loadStationPage(slug);
+  if (!page) notFound();
+  const { station, city } = page;
   const official = officialStation(station);
+  const meters = meterRows(station.pollutants);
 
   return (
-    <article className="reading-layout">
-      <div className="reading-summary">
-        <h1 className="page-title">{station.name}</h1>
-        <p className="lede">
-          {station.city}, {station.state}
-        </p>
-        <div className="mt-8">
-          <AqiFigure aqi={official.aqi} band={official.band} missing="words" />
-        </div>
-        {station.prominent ? (
-          <p className="summary-note summary-lead">
-            Set by {pollutantLabel(station.prominent)}
+    <article className="reading">
+      <div className="reading-top">
+        <section className={heroClass(official.band)} style={heroStyle(official.band)}>
+          <p className="hero-kicker">
+            {station.city}
+            <span aria-hidden="true"> · </span>
+            {station.state}
           </p>
-        ) : null}
-        <p className="updated">
-          {station.updatedAt
-            ? `Updated ${station.updatedAt}`
-            : "No update time was published with this reading."}
-        </p>
-        <p className="mt-6">
-          <a
-            className="text-link"
-            href={mapHref(station.latitude, station.longitude)}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open the station on a map
-            <span className="sr-only"> (opens in a new tab)</span>
-          </a>
-        </p>
+          <h1 className="hero-name">{station.name}</h1>
+          <AqiFigure
+            aqi={official.aqi}
+            band={official.band}
+            updatedAt={station.updatedAt}
+            missing="words"
+          />
+        </section>
+        <div className="reading-side">
+          <section className="paper-card">
+            <StationDistance latitude={station.latitude} longitude={station.longitude} />
+            {station.prominent ? <p>Set by {pollutantLabel(station.prominent)}</p> : null}
+            {city ? <CityAverageLink city={city} /> : null}
+          </section>
+        </div>
       </div>
-      <div className="reading-list">
-        <h2 className="kicker">Sub-index</h2>
-        <p className="summary-note">These are index points, not concentrations.</p>
-        {station.pollutants.length === 0 ? (
-          <p className="empty-note">No sub-indices were published for this station.</p>
+      <section className="paper-card">
+        {meters.length > 0 ? (
+          <>
+            <PollutantMeters pollutants={station.pollutants} />
+            <p className="meters-note">These are index points, not concentrations.</p>
+          </>
         ) : (
-          <dl className="subindex">
-            {station.pollutants.map((reading) => (
-              <div key={reading.id}>
-                <dt>{pollutantLabel(reading.id)}</dt>
-                <dd>{reading.subIndex ?? "—"}</dd>
-              </div>
-            ))}
-          </dl>
+          <p>No sub-indices were published for this station.</p>
         )}
-      </div>
+      </section>
+      <TrendChart kind="station" slug={station.slug} accent={bandAccent(official.band)} />
     </article>
   );
 }

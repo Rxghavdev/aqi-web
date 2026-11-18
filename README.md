@@ -25,3 +25,17 @@ npm run dev
 ```bash
 npm test
 ```
+
+## Deploy
+
+This app is a Node server. The CPCB snapshot and the trend database live on disk (`.cache` and `.data`), so host it where the filesystem persists. A serverless host will forget both after each request.
+
+```bash
+npm run sync
+npm run build
+npm start
+```
+
+Set `DATA_GOV_API_KEY` and `NEXT_PUBLIC_SITE_URL` in the host environment. Run `npm run sync` on a schedule, about once an hour. The pages read the cache. They do not call the government API for every visitor.
+
+Ad slots stay empty until `NEXT_PUBLIC_ADSENSE_CLIENT` and the slot ids are set.
