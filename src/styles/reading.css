@@ -1715,3 +1715,224 @@
     min-height: 34rem;
   }
 }
+
+/* Phone: show the reading, facts and weather in the first screens ---------- */
+
+@media (max-width: 47.99rem) {
+  .place {
+    gap: 1.6rem;
+  }
+
+  .place-top {
+    gap: 0.6rem;
+  }
+
+  .place-side {
+    gap: 0.6rem;
+  }
+
+  .phead {
+    gap: 0.1rem;
+  }
+
+  .phead-title {
+    font-size: clamp(1.65rem, 7vw, 2rem);
+  }
+
+  .phead-sub {
+    margin-top: 0.2rem;
+    font-size: 0.92rem;
+  }
+
+  .crumbs a,
+  .crumbs span {
+    padding: 0.15rem 0;
+  }
+
+  /* Reading card: gauge beside the words instead of a tall centred stack. */
+  .hero {
+    padding: 0.95rem 1rem 1rem;
+    border-radius: 26px;
+  }
+
+  .hero-head {
+    gap: 0.1rem;
+  }
+
+  .hero-name {
+    font-size: 1.3rem;
+  }
+
+  .aqi-figure {
+    display: grid;
+    grid-template-columns: 8.75rem minmax(0, 1fr);
+    grid-template-areas:
+      "dial band"
+      "dial hook"
+      "dial live";
+    grid-template-rows: auto auto auto;
+    align-content: center;
+    align-items: start;
+    column-gap: 0.95rem;
+    margin-top: 0.4rem;
+    text-align: left;
+  }
+
+  .aqi-figure > .dial {
+    grid-area: dial;
+    align-self: center;
+    width: 100%;
+    margin: 0;
+  }
+
+  .dial-core {
+    padding: 0 1.1rem;
+  }
+
+  .aqi-numeral {
+    font-size: 2.85rem;
+  }
+
+  .aqi-missing {
+    font-size: 1rem;
+  }
+
+  .dial-unit,
+  .scale-line {
+    display: none;
+  }
+
+  .band-name {
+    grid-area: band;
+    align-self: end;
+    margin: 0;
+    font-size: 1.55rem;
+  }
+
+  .hook-line {
+    grid-area: hook;
+    max-width: none;
+    margin: 0.3rem 0 0;
+    font-size: 0.86rem;
+    line-height: 1.38;
+    text-wrap: pretty;
+  }
+
+  .live-row {
+    grid-area: live;
+    justify-content: flex-start;
+    margin-top: 0.55rem;
+    font-size: 0.8rem;
+  }
+
+  .live-note {
+    font-size: 0.72rem;
+    text-align: left;
+  }
+
+  .scale {
+    margin-top: 0.75rem;
+  }
+
+  /* Facts: two compact icon tiles per row. */
+  .facts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .fact {
+    grid-template-areas:
+      "icon value"
+      "icon label";
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: center;
+    column-gap: 0.6rem;
+    row-gap: 0.05rem;
+    padding: 0.6rem 0.7rem;
+    border-radius: 16px;
+  }
+
+  .fact-icon {
+    width: 1.8rem;
+    height: 1.8rem;
+  }
+
+  .fact-value {
+    font-size: 1rem;
+  }
+
+  .fact-value .fact-link {
+    font-size: 0.92rem;
+  }
+
+  .fact-label {
+    font-size: 0.72rem;
+  }
+
+  .facts + .weather {
+    margin-top: 0.6rem;
+  }
+
+  /* Weather: one tight row of numbers. */
+  .weather {
+    min-height: 8.6rem;
+    gap: 0.6rem;
+    padding: 0.8rem 0.85rem;
+    border-radius: 20px;
+  }
+
+  .weather-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .weather-temp {
+    font-size: 1.7rem;
+  }
+
+  .weather-facts > div {
+    padding: 0.4rem 0.5rem 0.45rem;
+  }
+
+  .weather-facts dd {
+    font-size: 0.92rem;
+  }
+
+  .weather-skeleton {
+    min-height: 5rem;
+  }
+
+  .sk-hero {
+    min-height: 18rem;
+  }
+
+  .sk-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sk-fact {
+    height: 3.6rem;
+    border-radius: 16px;
+  }
+
+  .sk-weather {
+    height: 8.6rem;
+    border-radius: 20px;
+  }
+}
+
+@media (max-width: 23.5rem) {
+  .aqi-figure {
+    grid-template-columns: 7.6rem minmax(0, 1fr);
+    column-gap: 0.75rem;
+  }
+
+  .aqi-numeral {
+    font-size: 2.45rem;
+  }
+
+  .band-name {
+    font-size: 1.4rem;
+  }
+}
