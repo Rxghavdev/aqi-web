@@ -44,6 +44,9 @@ export function AqiFigure({
         {live ? <span className="live-dot" aria-hidden="true" /> : null}
         <span>{live ? "Live" : "Updated"}</span>
         <span className="live-time">{stamp ?? "No update time was published"}</span>
+        {!live && stamp ? (
+          <span className="live-note">Official feed is behind; it refreshes hourly.</span>
+        ) : null}
       </p>
       <p className="scale-line">CPCB National Air Quality Index</p>
     </div>

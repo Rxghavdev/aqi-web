@@ -1,5 +1,6 @@
 import { slugify } from "./aggregate.ts";
 import { haversineKm, roundKm } from "./geo.ts";
+import { kickRefresh } from "./refresh.ts";
 import { hourlyModelAqi } from "./sources/open-meteo.ts";
 import { readSnapshot, type SnapshotFile } from "./snapshot.ts";
 import type {
@@ -47,13 +48,16 @@ export async function getSnapshotMeta(): Promise<SnapshotMeta> {
 }
 
 export async function listCities(): Promise<CityAqi[]> {
+  kickRefresh();
   const { snapshot } = await readSnapshot();
   if (!snapshot) return [];
   return snapshot.cities.slice().sort(compareCities);
 }
 
 /** City averages placed at the mean of their station coordinates. */
-export async function listMapCities(): Promise<MapCityPoint[]> {  const { snapshot } = await readSnapshot();
+export async function listMapCities(): Promise<MapCityPoint[]> {
+  kickRefresh();
+  const { snapshot } = await readSnapshot();
   if (!snapshot) return [];
   const grouped = new Map<string, { lat: number; lon: number; count: number }>();
   for (const station of snapshot.stations) {
@@ -92,6 +96,7 @@ export async function listMapCities(): Promise<MapCityPoint[]> {  const { snapsh
 export async function getCity(
   slug: string,
 ): Promise<{ city: CityAqi; stations: StationAqi[]; nearby: StationAqi[] } | null> {
+  kickRefresh();
   const { snapshot } = await readSnapshot();
   if (!snapshot) return null;
   const city = snapshot.cities.find((item) => item.slug === slug);
@@ -117,6 +122,7 @@ export async function getStationPage(
   city: CityAqi | null;
   nearby: StationAqi[];
 } | null> {
+  kickRefresh();
   const { snapshot } = await readSnapshot();
   if (!snapshot) return null;
   const station = snapshot.stations.find((item) => item.slug === slug);
@@ -137,6 +143,7 @@ export async function getPlace(input: {
   lat?: number;
   lon?: number;
 }): Promise<PlaceReport | null> {
+  kickRefresh();
   const { snapshot } = await readSnapshot();
   if (!snapshot || snapshot.stations.length === 0) return null;
 

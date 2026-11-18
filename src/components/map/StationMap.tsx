@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { GeoJSONSource, Map as MapLibreMap, Marker } from "maplibre-gl";
 import { bandAccent } from "@/lib/aqi";
+import type { Band } from "@/lib/types";
 import { readTheme, type ThemeName } from "@/components/shell/theme";
 import { cityPins, safeMapHref, type MapPin } from "./pins";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -224,15 +225,17 @@ function MapCanvas({ frame }: { frame: MapFrame }) {
                 ["linear"],
                 ["zoom"],
                 3.2,
-                9,
+                8,
                 6,
+                12,
+                8,
+                15,
                 11,
-                11,
-                14,
+                17,
               ],
               "circle-color": ["get", "color"],
-              "circle-opacity": ["case", ["==", ["get", "active"], 1], 0, 0.96],
-              "circle-stroke-width": 1.5,
+              "circle-opacity": ["case", ["==", ["get", "active"], 1], 0, 1],
+              "circle-stroke-width": 1.8,
               "circle-stroke-color": strokeFor(readTheme()),
             },
           });
@@ -251,19 +254,21 @@ function MapCanvas({ frame }: { frame: MapFrame }) {
                 3.2,
                 8,
                 6,
-                9,
+                10,
+                8,
+                11.5,
                 11,
-                11,
+                12.5,
               ],
               "text-allow-overlap": false,
-              "text-padding": 2,
+              "text-padding": 1,
               "text-ignore-placement": false,
               "symbol-sort-key": ["get", "rank"],
             },
             paint: {
-              "text-color": "#ffffff",
-              "text-halo-color": strokeFor(readTheme()),
-              "text-halo-width": 1.1,
+              "text-color": ["get", "ink"],
+              "text-halo-color": ["get", "color"],
+              "text-halo-width": 0.3,
             },
           });
         }
@@ -458,6 +463,7 @@ function toCollection(frame: MapFrame): GeoJSON.FeatureCollection {
         band: pin.band ?? "",
         href: pin.href,
         color: bandAccent(pin.band),
+        ink: inkFor(pin.band),
         rank: pin.aqi == null ? 0 : pin.aqi,
         active: pin.slug === frame.activeSlug ? 1 : 0,
       },
@@ -500,8 +506,8 @@ function fit(map: MapLibreMap, frame: MapFrame, reduced: boolean) {
       [east, north],
     ],
     {
-      padding: { top: 108, right: 36, bottom: 72, left: 28 },
-      maxZoom: 11.2,
+      padding: { top: 116, right: 40, bottom: 76, left: 32 },
+      maxZoom: 11.4,
       duration: reduced ? 0 : 700,
     },
   );
@@ -513,6 +519,12 @@ function styleFor(theme: ThemeName): string {
 
 function strokeFor(theme: ThemeName): string {
   return theme === "dark" ? "#100e0c" : "#fffdf8";
+}
+
+/** Dark ink on the saturated warm bands, light ink on the deep reds. */
+function inkFor(band: Band | null): string {
+  if (band === "Very Poor" || band === "Severe") return "#fffdf8";
+  return "#17140f";
 }
 
 function textOf(properties: GeoJSON.GeoJsonProperties, key: string): string {

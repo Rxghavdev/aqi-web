@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { bandAccent } from "@/lib/aqi";
 import type { Band } from "@/lib/types";
 
@@ -53,7 +53,7 @@ export function AqiDial({
   return (
     <div className="dial">
       <svg
-        className="dial-svg"
+        className="dial-svg dial-ring"
         viewBox="0 0 240 240"
         aria-hidden="true"
         focusable="false"
@@ -74,12 +74,13 @@ export function AqiDial({
       {angle != null ? (
         <span
           className="dial-knob"
-          style={{ transform: `rotate(${angle}deg)` }}
+          style={{ "--angle": `${angle}deg` } as CSSProperties}
           aria-hidden="true"
         >
           <span style={{ background: bandAccent(band) }} />
         </span>
       ) : null}
+      <span className="dial-halo" aria-hidden="true" style={{ background: `radial-gradient(circle, ${bandAccent(band)} 0%, transparent 70%)` }} />
       <div className="dial-core">{children}</div>
     </div>
   );
