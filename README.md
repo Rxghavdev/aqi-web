@@ -38,4 +38,8 @@ npm start
 
 Set `DATA_GOV_API_KEY` and `NEXT_PUBLIC_SITE_URL` in the host environment. Run `npm run sync` on a schedule, about once an hour. The pages read the cache. They do not call the government API for every visitor.
 
+`NEXT_PUBLIC_SITE_URL` must be your public https address. A production build refuses to start without it, or with a localhost address. To test a production build on your own machine, set `ALLOW_LOCAL_SITE_URL=1`. If the cache is more than 30 minutes old, a visit starts a background refresh, so the hourly job is a safety net and not the only source.
+
+The moving sky on the reading card is plain CSS. It follows the official band and stops when the visitor's system asks for reduced motion.
+
 Ad slots stay empty until `NEXT_PUBLIC_ADSENSE_CLIENT` and the slot ids are set.

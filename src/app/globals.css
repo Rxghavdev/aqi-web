@@ -395,6 +395,118 @@ button {
   }
 }
 
+/* Text that sits over the moving sky keeps AA contrast on the tinted clouds. */
+.hero :is(.hero-kicker, .dial-unit, .live-time, .live-note, .scale-line, .scale-legend, .hero-place, .hero-distance) {
+  color: color-mix(in srgb, var(--muted) 55%, var(--ink));
+}
+
+/* Moving sky: clouds, smog and particles that follow the official band. */
+.atmo {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  container-type: size;
+  pointer-events: none;
+}
+
+.atmo-cloud {
+  position: absolute;
+  left: 0;
+  display: block;
+  color: color-mix(in srgb, var(--band) var(--cloud-mix, 14%), var(--card));
+  transform: translate3d(var(--x, 10cqw), 0, 0);
+  animation: cloud-drift linear infinite;
+  will-change: transform;
+}
+
+.atmo-cloud svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  fill: currentColor;
+  animation: cloud-bob 6s ease-in-out infinite alternate;
+}
+
+.atmo-cloud:nth-of-type(odd) svg {
+  animation-duration: 8s;
+  animation-direction: alternate-reverse;
+}
+
+@keyframes cloud-drift {
+  from {
+    transform: translate3d(-40cqw, 0, 0);
+  }
+  to {
+    transform: translate3d(112cqw, 0, 0);
+  }
+}
+
+@keyframes cloud-bob {
+  from {
+    transform: translate3d(0, -7px, 0);
+  }
+  to {
+    transform: translate3d(0, 7px, 0);
+  }
+}
+
+.atmo-smog {
+  position: absolute;
+  inset: auto -25% -35% -25%;
+  height: 70%;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in srgb, var(--band) calc(10% + var(--lvl, 0) * 5%), transparent),
+    transparent
+  );
+  animation: smog-roll 18s ease-in-out infinite alternate;
+}
+
+.atmo-smog-b {
+  inset: auto -35% -45% -10%;
+  height: 60%;
+  opacity: 0.8;
+  animation-duration: 24s;
+  animation-direction: alternate-reverse;
+}
+
+@keyframes smog-roll {
+  from {
+    transform: translate3d(-9%, 4%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(9%, -6%, 0) scale(1.12);
+  }
+}
+
+.atmo-mote {
+  position: absolute;
+  top: 100%;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--band) 70%, var(--ink));
+  opacity: 0;
+  animation: mote-rise linear infinite;
+}
+
+@keyframes mote-rise {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  12% {
+    opacity: 0.55;
+  }
+  88% {
+    opacity: 0.4;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--dx, 2rem), -104cqh, 0);
+  }
+}
+
 .hero.is-quiet::before {
   background: none;
 }
@@ -535,14 +647,32 @@ button {
   transform: translate(-50%, -50%);
 }
 
+/* A ring that keeps radiating from the knob so the needle reads as live. */
+.dial-knob > span::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  animation: knob-ping 2.2s ease-out 1.2s infinite;
+}
+
+@keyframes knob-ping {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--ink) 38%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 14px transparent;
+  }
+}
+
 .dial-halo {
   position: absolute;
   z-index: 0;
   inset: 18%;
   border-radius: 999px;
-  opacity: 0.16;
+  opacity: 0.2;
   filter: blur(18px);
-  animation: halo-breathe 7s ease-in-out infinite;
+  animation: halo-breathe 4.5s ease-in-out infinite;
   pointer-events: none;
 }
 
@@ -558,12 +688,12 @@ button {
 @keyframes halo-breathe {
   0%,
   100% {
-    opacity: 0.12;
-    transform: scale(0.94);
+    opacity: 0.18;
+    transform: scale(0.92);
   }
   50% {
-    opacity: 0.26;
-    transform: scale(1.06);
+    opacity: 0.42;
+    transform: scale(1.12);
   }
 }
 

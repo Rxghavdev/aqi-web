@@ -2,6 +2,7 @@ import Link from "next/link";
 import { hookLine } from "@/lib/voice";
 import type { Band } from "@/lib/types";
 import { AqiDial } from "./AqiDial";
+import { Atmosphere } from "./Atmosphere";
 import { aqiName, bandLabel, finiteAqi, formatStamp, stampIsToday } from "./text";
 
 export function AqiFigure({
@@ -23,6 +24,7 @@ export function AqiFigure({
 
   return (
     <div className="aqi-figure">
+      <Atmosphere band={shown} />
       <AqiDial value={value} band={shown}>
         {words ? (
           <p className="aqi-missing">No official AQI</p>
