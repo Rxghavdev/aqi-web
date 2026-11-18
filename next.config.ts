@@ -3,7 +3,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   serverExternalPackages: ["node:sqlite"],
-  transpilePackages: ["maplibre-gl"],
   cacheComponents: true,
   partialPrefetching: true,
   async headers() {

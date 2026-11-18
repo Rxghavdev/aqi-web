@@ -39,6 +39,8 @@ function HomeSkeleton() {
       <div className="stage-read">
         <div className="reading-card">
           <div className="hero is-quiet">
+            {/* The server shell needs a heading even before the point loads. */}
+            <h1 className="ask-title">The monitor nearest you, on India&apos;s scale.</h1>
             <p className="sr-only">Loading the nearest station.</p>
             <div className="skeleton-numeral" aria-hidden="true" />
             <div className="skeleton-line" aria-hidden="true" />

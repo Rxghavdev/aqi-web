@@ -24,28 +24,43 @@ export async function GET(request: Request) {
 
   const db = openHistory();
   const today = kolkataDate();
+
+  // Official points are already in SQLite. The model line is a nicety, so it is
+  // fetched only after the official series is ready to send, and never awaited.
+  const series = readTrend(db, query, today);
   if (modelFetchedOn(db, query.kind, query.slug) !== today) {
-    const spot = await findSpot(query.kind, query.slug);
-    if (spot) {
-      try {
-        const points = await fetchModelTrend(
-          spot.latitude,
-          spot.longitude,
-          rangeStart("6m", today),
-          today,
-        );
-        if (points.length > 0) recordModelPoints(db, query.kind, query.slug, points, today);
-      } catch {
-        /* A missing model line must not fail the official series. */
-      }
-    }
+    void backfillModel(db, query.kind, query.slug, today);
   }
 
-  const series = readTrend(db, query, today);
   return NextResponse.json(
     { range: query.range, official: series.official, model: series.model },
     { headers: { "Cache-Control": "public, max-age=300" } },
   );
+}
+
+/**
+ * Fetch the CAMS trend in the background and store it for the next request.
+ * Runs detached: a slow or failing model never delays the chart.
+ */
+async function backfillModel(
+  db: ReturnType<typeof openHistory>,
+  kind: "city" | "station",
+  slug: string,
+  today: string,
+): Promise<void> {
+  try {
+    const spot = await findSpot(kind, slug);
+    if (!spot) return;
+    const points = await fetchModelTrend(
+      spot.latitude,
+      spot.longitude,
+      rangeStart("6m", today),
+      today,
+    );
+    if (points.length > 0) recordModelPoints(db, kind, slug, points, today);
+  } catch {
+    /* A missing model line must not affect the official series. */
+  }
 }
 
 async function findSpot(

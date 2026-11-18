@@ -11,6 +11,10 @@ export const metadata: Metadata = {
   title: "Nearest station",
   description:
     "The official National Air Quality Index from the CPCB station nearest to you.",
+  // Coordinate URLs are unbounded. Canonicalise to the search page and keep
+  // them out of the index.
+  alternates: { canonical: "/near" },
+  robots: { index: false, follow: true },
 };
 
 type NearSearch = Promise<{

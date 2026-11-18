@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { StationMap } from "@/components/map/StationMap";
@@ -12,7 +11,6 @@ import { heroClass, heroStyle } from "@/components/reading/hero";
 import { loadStationPage } from "@/components/reading/load";
 import { PollutantBoard } from "@/components/reading/PollutantBoard";
 import { ReadingStage } from "@/components/reading/ReadingStage";
-import { ReadingSkeleton } from "@/components/reading/ReadingSkeleton";
 import { WeatherCard } from "@/components/reading/WeatherCard";
 import { TrendChart } from "@/components/trend/TrendChart";
 import {
@@ -36,21 +34,29 @@ export async function generateMetadata({
   return {
     title: stationTitle(page.station),
     description: stationDescription(page.station),
+    alternates: { canonical: `/station/${encodeURIComponent(page.station.slug)}` },
+    openGraph: {
+      title: stationTitle(page.station),
+      description: stationDescription(page.station),
+      url: `/station/${encodeURIComponent(page.station.slug)}`,
+      type: "website",
+    },
   };
 }
 
-export default function StationPage({ params }: { params: StationParams }) {
-  return (
-    <Suspense fallback={<ReadingSkeleton />}>
-      <StationReading params={params} />
-    </Suspense>
-  );
-}
-
-async function StationReading({ params }: { params: StationParams }) {
+export default async function StationPage({ params }: { params: StationParams }) {
   const { slug } = await params;
+  // Resolve before rendering so an unknown slug answers 404, not a 200 shell.
   const page = await loadStationPage(slug);
   if (!page) notFound();
+  return <StationReading page={page} />;
+}
+
+async function StationReading({
+  page,
+}: {
+  page: NonNullable<Awaited<ReturnType<typeof loadStationPage>>>;
+}) {
   const { station, city, nearby } = page;
   const official = officialStation(station);
 

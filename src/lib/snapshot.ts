@@ -80,6 +80,16 @@ async function doRefresh(force: boolean): Promise<SnapshotFile> {
   try {
     const records = await fetchAllCpcbRecords();
     const { stations, cities } = aggregateRecords(records);
+    // A 200 with no usable rows is a bad feed, not a real reading. Writing it
+    // would blank every page and mark the snapshot fresh, so the refresh would
+    // not retry. Rows can exist and still carry no index (every value "NA"),
+    // so require at least one station with a published number.
+    const reporting = stations.filter((station) => station.aqi != null).length;
+    if (records.length === 0 || stations.length === 0 || reporting === 0) {
+      throw new Error(
+        `CPCB returned no usable readings (${records.length} rows, ${stations.length} stations, ${reporting} reporting)`,
+      );
+    }
     const snapshot: SnapshotFile = {
       snapshotAt: new Date().toISOString(),
       stations,

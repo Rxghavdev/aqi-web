@@ -8,6 +8,22 @@
   --card: #fffdf8;
   --map-stroke: #fffdf8;
   color-scheme: light;
+
+  /* Band numbers on paper. Moderate stays ink so yellow is never a numeral. */
+  --num-good: #146c3a;
+  --num-satisfactory: #3f6212;
+  --num-moderate: #1c1915;
+  --num-poor: #c2410c;
+  --num-very-poor: #be123c;
+  --num-severe: #9f1239;
+
+  /* Band words at small sizes. Every value clears 4.5:1 on paper. */
+  --text-good: #146c3a;
+  --text-satisfactory: #477008;
+  --text-moderate: #8a5a00;
+  --text-poor: #b4480a;
+  --text-very-poor: #be123c;
+  --text-severe: #9f1239;
 }
 
 :root[data-theme="dark"] {
@@ -18,6 +34,20 @@
   --card: #1a1714;
   --map-stroke: #100e0c;
   color-scheme: dark;
+
+  --num-good: #4ade80;
+  --num-satisfactory: #a3e635;
+  --num-moderate: #fbbf24;
+  --num-poor: #fb923c;
+  --num-very-poor: #fb7185;
+  --num-severe: #f87171;
+
+  --text-good: #4ade80;
+  --text-satisfactory: #a3e635;
+  --text-moderate: #fbbf24;
+  --text-poor: #fb923c;
+  --text-very-poor: #fb7185;
+  --text-severe: #f87171;
 }
 
 @theme inline {

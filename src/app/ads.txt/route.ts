@@ -1,8 +1,9 @@
 export function GET() {
   const client = process.env.NEXT_PUBLIC_ADSENSE_CLIENT?.trim();
   if (!client) {
-    return new Response("# AdSense publisher id is not configured", {
-      status: 200,
+    // Unconfigured: 404 so crawlers do not record a placeholder ads.txt.
+    return new Response("ads.txt is not configured for this deployment\n", {
+      status: 404,
       headers: { "Content-Type": "text/plain" },
     });
   }

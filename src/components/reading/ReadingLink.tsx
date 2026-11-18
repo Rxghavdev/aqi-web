@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { bandAccent, bandNumberColor } from "@/lib/aqi";
+import { bandNumberColor, bandTextColor } from "@/lib/aqi";
 import type { Band } from "@/lib/types";
 import { bandLabel, finiteAqi } from "./text";
 
@@ -27,7 +27,7 @@ export function ReadingLink({
         {meta ? <span className="row-meta"> · {meta}</span> : null}
       </span>
       <span className="rank-end">
-        <span className="band-word" style={{ color: bandAccent(band) }}>
+        <span className="band-word" style={{ color: bandTextColor(band) }}>
           {bandLabel(band)}
         </span>
         <span className="rank-num" style={{ color: bandNumberColor(band) }}>

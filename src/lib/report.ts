@@ -54,6 +54,13 @@ export async function listCities(): Promise<CityAqi[]> {
   return snapshot.cities.slice().sort(compareCities);
 }
 
+/** Every station, for the sitemap. */
+export async function listStations(): Promise<StationAqi[]> {
+  const { snapshot } = await readSnapshot();
+  if (!snapshot) return [];
+  return snapshot.stations;
+}
+
 /** City averages placed at the mean of their station coordinates. */
 export async function listMapCities(): Promise<MapCityPoint[]> {
   kickRefresh();
@@ -387,7 +394,7 @@ function stationsAround(
     .sort((a, b) => a.km - b.km)
     .slice(0, 40)
     .map((item) => item.station);
-  return found.length > 0 ? found : snapshot.stations.slice(0, 1);
+  return found;
 }
 
 function usableCoord(lat: number, lon: number): boolean {

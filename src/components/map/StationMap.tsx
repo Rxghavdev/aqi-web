@@ -42,15 +42,21 @@ export function StationMap({
   frame?: string;
 }) {
   const hereKey = `${activeSlug ?? ""}:${pins.length}:${pins[0]?.slug ?? ""}:${pins.at(-1)?.slug ?? ""}`;
-  const [scope, setScope] = useState<"here" | "india">(pins.length > 0 ? "here" : "india");
+
+  // Scope and selection are derived from the current pin set rather than
+  // reset by an effect: a choice only applies while the pins are unchanged.
+  const defaultScope: "here" | "india" = pins.length > 0 ? "here" : "india";
+  const [choice, setChoice] = useState<{ key: string; scope: "here" | "india" } | null>(null);
+  const scope = choice && choice.key === hereKey ? choice.scope : defaultScope;
+
   const [indiaPins, setIndiaPins] = useState<MapPin[] | null>(null);
   const [indiaError, setIndiaError] = useState(false);
-  const [selected, setSelected] = useState<MapPin | null>(null);
+  const [picked, setPicked] = useState<{ key: string; pin: MapPin } | null>(null);
+  const selected = picked && picked.key === hereKey ? picked.pin : null;
 
-  useEffect(() => {
-    setScope(pins.length > 0 ? "here" : "india");
-    setSelected(null);
-  }, [hereKey, pins.length]);
+  const setScope = (next: "here" | "india") => setChoice({ key: hereKey, scope: next });
+  const setSelected = (pin: MapPin | null) =>
+    setPicked(pin ? { key: hereKey, pin } : null);
 
   useEffect(() => {
     if (scope !== "india" || indiaPins) return;
@@ -82,7 +88,10 @@ export function StationMap({
       user,
       fitKey: `${scope}:${shown.map((pin) => pin.slug).join("|")}:${user ? `${user.lat.toFixed(3)},${user.lon.toFixed(3)}` : ""}`,
     }),
-    [shown, scope, activeSlug, user],
+    // `shown` is derived from these three; listing it would rebuild the frame
+    // on every render because it is a fresh array.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pins, indiaPins, scope, activeSlug, user],
   );
 
   const caption =
@@ -305,8 +314,13 @@ function MapCanvas({
   const frameRef = useRef(frame);
   const paintRef = useRef<(() => void) | null>(null);
   const onSelectRef = useRef(onSelect);
-  frameRef.current = frame;
-  onSelectRef.current = onSelect;
+
+  // Refs are written in an effect, not during render: a render that React
+  // discards must not leave the refs pointing at a frame that never committed.
+  useEffect(() => {
+    frameRef.current = frame;
+    onSelectRef.current = onSelect;
+  }, [frame, onSelect]);
 
   useEffect(() => {
     const node = nodeRef.current;
@@ -600,12 +614,12 @@ function MapCanvas({
 }
 
 function loadMapLibre(): Promise<typeof import("maplibre-gl")> {
-  const specifier = new URL("/vendor/maplibre/maplibre-gl.mjs", window.location.href).href;
-  const load = new Function(
-    "specifier",
-    "return import(specifier)",
-  ) as (specifier: string) => Promise<typeof import("maplibre-gl")>;
-  return load(specifier);
+  const specifier = "/vendor/maplibre/maplibre-gl.mjs";
+  // A literal specifier so bundlers leave it alone; the browser resolves it
+  // against the current origin. Avoids eval, which a strict CSP would block.
+  return import(/* webpackIgnore: true */ /* turbopackIgnore: true */ specifier) as Promise<
+    typeof import("maplibre-gl")
+  >;
 }
 
 function activeMark(pin: MapPin, onOpen: (href: string) => void): HTMLElement {

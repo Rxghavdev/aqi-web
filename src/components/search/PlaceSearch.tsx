@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
-import { bandAccent, bandNumberColor } from "@/lib/aqi";
+import { bandNumberColor, bandTextColor } from "@/lib/aqi";
 import type { Band, SearchHit } from "@/lib/types";
 import { bandLabel, cityPath, stationPath } from "@/components/reading/text";
 import { writePoint } from "@/components/place/storage";
@@ -263,7 +263,7 @@ export function PlaceSearch() {
                       <span className="row-aqi">
                         <span
                           className="band-word"
-                          style={{ color: bandAccent(hit.band) }}
+                          style={{ color: bandTextColor(hit.band) }}
                         >
                           {bandLabel(hit.band)}
                         </span>

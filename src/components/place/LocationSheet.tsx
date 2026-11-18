@@ -17,6 +17,9 @@ export function LocationSheet() {
   const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
+    // Only ask on the home page. A first-time visitor arriving from a search
+    // result on a city or station page should see the reading, not a modal.
+    if (window.location.pathname !== "/") return;
     try {
       if (localStorage.getItem(LOC_KEY) == null) setOpen(true);
     } catch {

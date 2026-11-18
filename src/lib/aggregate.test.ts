@@ -121,3 +121,25 @@ test("Ozone normalizes to OZONE", () => {
   assert.equal(stations[0]?.aqi, 77);
   assert.equal(stations[0]?.insufficient, false);
 });
+
+/**
+ * A 200 response with no usable rows must never be written to the cache.
+ * snapshot.ts relies on this shape to decide whether a refresh is real.
+ */
+test("an empty feed produces no stations to write", () => {
+  const { stations, cities } = aggregateRecords([]);
+  assert.equal(stations.length, 0);
+  assert.equal(cities.length, 0);
+});
+
+test("an all-NA feed has no reporting station, so nothing real to write", () => {
+  const records = [
+    row({ station: "A", avg_value: "NA" }),
+    row({ station: "B", avg_value: "NA" }),
+  ];
+  const { stations, cities } = aggregateRecords(records);
+  // Rows can exist and still carry no index. snapshot.ts guards on this
+  // count, not on the row count alone.
+  assert.equal(stations.filter((s) => s.aqi != null).length, 0);
+  assert.equal(cities.every((c) => c.aqi == null), true);
+});

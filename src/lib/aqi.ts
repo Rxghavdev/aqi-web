@@ -144,23 +144,43 @@ export function healthLine(band: Band | null): string {
   }
 }
 
-/** Number color on the paper background. Moderate stays ink so yellow text is never the number. */
+/** Number color on the paper background. Flips with the theme via CSS vars. */
 export function bandNumberColor(band: Band | null): string {
   switch (band) {
     case "Good":
-      return "#146c3a";
+      return "var(--num-good)";
     case "Satisfactory":
-      return "#3f6212";
+      return "var(--num-satisfactory)";
     case "Moderate":
-      return "#1c1915";
+      return "var(--num-moderate)";
     case "Poor":
-      return "#c2410c";
+      return "var(--num-poor)";
     case "Very Poor":
-      return "#be123c";
+      return "var(--num-very-poor)";
     case "Severe":
-      return "#9f1239";
+      return "var(--num-severe)";
     default:
-      return "#1c1915";
+      return "var(--num-moderate)";
+  }
+}
+
+/** Text-safe accent for band words. Darker than the fill so light paper passes AA. */
+export function bandTextColor(band: Band | null): string {
+  switch (band) {
+    case "Good":
+      return "var(--text-good)";
+    case "Satisfactory":
+      return "var(--text-satisfactory)";
+    case "Moderate":
+      return "var(--text-moderate)";
+    case "Poor":
+      return "var(--text-poor)";
+    case "Very Poor":
+      return "var(--text-very-poor)";
+    case "Severe":
+      return "var(--text-severe)";
+    default:
+      return "var(--text-moderate)";
   }
 }
 

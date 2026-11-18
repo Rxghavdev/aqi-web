@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { bandAccent, bandFor } from "@/lib/aqi";
+import { bandAccent, bandFor, bandTextColor } from "@/lib/aqi";
 import type { PollutantId, PollutantReading } from "@/lib/types";
 import { bandLabel, pollutantLabel } from "./text";
 
@@ -80,7 +80,7 @@ export function PollutantBoard({
                 type="button"
                 className={expanded ? "pollutant is-open" : "pollutant"}
                 aria-expanded={expanded}
-                aria-controls={panelId}
+                aria-controls={expanded ? panelId : undefined}
                 onClick={() => setOpen(expanded ? null : reading.id)}
               >
                 <span className="pollutant-top">
@@ -89,7 +89,7 @@ export function PollutantBoard({
                 </span>
                 <span className="pollutant-read">
                   <span className="pollutant-value">{value}</span>
-                  <span className="pollutant-band" style={{ color: bandAccent(band) }}>
+                  <span className="pollutant-band" style={{ color: bandTextColor(band) }}>
                     {bandLabel(band)}
                   </span>
                 </span>

@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -13,7 +12,6 @@ import { loadCity } from "@/components/reading/load";
 import { PollutantBoard } from "@/components/reading/PollutantBoard";
 import { ReadingLink } from "@/components/reading/ReadingLink";
 import { ReadingStage } from "@/components/reading/ReadingStage";
-import { ReadingSkeleton } from "@/components/reading/ReadingSkeleton";
 import { WeatherCard } from "@/components/reading/WeatherCard";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { TrendChart } from "@/components/trend/TrendChart";
@@ -43,21 +41,30 @@ export async function generateMetadata({
   return {
     title: cityTitle(result.city),
     description: cityDescription(result.city),
+    alternates: { canonical: cityPath(result.city.slug) },
+    openGraph: {
+      title: cityTitle(result.city),
+      description: cityDescription(result.city),
+      url: cityPath(result.city.slug),
+      type: "website",
+    },
   };
 }
 
-export default function CityPage({ params }: { params: CityParams }) {
-  return (
-    <Suspense fallback={<ReadingSkeleton />}>
-      <CityReading params={params} />
-    </Suspense>
-  );
-}
-
-async function CityReading({ params }: { params: CityParams }) {
+export default async function CityPage({ params }: { params: CityParams }) {
   const { slug } = await params;
+  // Resolve before rendering so an unknown slug answers 404 rather than
+  // streaming a 200 shell with a not-found body.
   const result = await loadCity(slug);
   if (!result) notFound();
+  return <CityReading result={result} />;
+}
+
+async function CityReading({
+  result,
+}: {
+  result: NonNullable<Awaited<ReturnType<typeof loadCity>>>;
+}) {
   const { city, stations, nearby } = result;
   const ordered = sortStations(stations);
   const [first, ...rest] = ordered;
