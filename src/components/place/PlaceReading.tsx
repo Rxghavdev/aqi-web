@@ -8,6 +8,7 @@ import { heroClass, heroStyle } from "@/components/reading/hero";
 import { PollutantBoard } from "@/components/reading/PollutantBoard";
 import { ReadingStage } from "@/components/reading/ReadingStage";
 import { SpikeStrip } from "@/components/reading/SpikeStrip";
+import { WeatherCard } from "@/components/reading/WeatherCard";
 import { officialStation, pollutantLabel, stationPath } from "@/components/reading/text";
 import { StationMap } from "@/components/map/StationMap";
 import Link from "next/link";
@@ -100,7 +101,9 @@ export function PlaceReading({
                 </Link>
               </>
             }
-          />
+          >
+            <WeatherCard latitude={nearest.latitude} longitude={nearest.longitude} />
+          </FactCard>
         }
         map={
             <StationMap

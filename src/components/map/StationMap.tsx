@@ -12,6 +12,13 @@ import "maplibre-gl/dist/maplibre-gl.css";
 const LIGHT_STYLE = "https://tiles.openfreemap.org/styles/positron";
 const DARK_STYLE = "https://tiles.openfreemap.org/styles/dark";
 
+/**
+ * Dot geometry is fixed in screen pixels, not scaled by zoom.
+ * A three-digit index at this size always clears the rim.
+ */
+const DOT_RADIUS = 17;
+const DOT_LABEL_SIZE = 10;
+
 type Point = { lat: number; lon: number };
 
 type MapFrame = {
@@ -38,9 +45,11 @@ export function StationMap({
   const [scope, setScope] = useState<"here" | "india">(pins.length > 0 ? "here" : "india");
   const [indiaPins, setIndiaPins] = useState<MapPin[] | null>(null);
   const [indiaError, setIndiaError] = useState(false);
+  const [selected, setSelected] = useState<MapPin | null>(null);
 
   useEffect(() => {
     setScope(pins.length > 0 ? "here" : "india");
+    setSelected(null);
   }, [hereKey, pins.length]);
 
   useEffect(() => {
@@ -66,15 +75,15 @@ export function StationMap({
   }, [scope, indiaPins]);
 
   const shown = scope === "here" ? pins : (indiaPins ?? []);
-  const framed = useMemo<MapFrame>(() => {
-    const local = scope === "here";
-    return {
+  const framed = useMemo<MapFrame>(
+    () => ({
       pins: shown,
-      activeSlug: local ? activeSlug : null,
+      activeSlug: scope === "here" ? activeSlug : null,
       user,
       fitKey: `${scope}:${shown.map((pin) => pin.slug).join("|")}:${user ? `${user.lat.toFixed(3)},${user.lon.toFixed(3)}` : ""}`,
-    };
-  }, [shown, scope, activeSlug, user]);
+    }),
+    [shown, scope, activeSlug, user],
+  );
 
   const caption =
     scope === "india"
@@ -83,11 +92,11 @@ export function StationMap({
         : indiaPins
           ? "Each dot is a city average, from CPCB monitors."
           : "Placing city averages."
-      : "Each dot is a CPCB monitor, not the air on a street.";
+      : "Each dot is a CPCB monitor. A dark count groups nearby monitors; tap to open.";
 
   return (
     <section className={`${frame} map-frame`} aria-label="Map of official readings">
-      <MapCanvas frame={framed} />
+      <MapCanvas frame={framed} onSelect={setSelected} />
       <div className="map-overlay">
         <div className="map-card">
           <p className="map-kicker">Official CPCB</p>
@@ -102,19 +111,30 @@ export function StationMap({
           </ul>
         </div>
       </div>
+
+      {selected ? (
+        <PinCard pin={selected} onClose={() => setSelected(null)} />
+      ) : null}
+
       {pins.length > 0 ? (
         <div className="map-scope" role="group" aria-label="Map extent">
           <button
             type="button"
             aria-pressed={scope === "here"}
-            onClick={() => setScope("here")}
+            onClick={() => {
+              setScope("here");
+              setSelected(null);
+            }}
           >
             {hereLabel}
           </button>
           <button
             type="button"
             aria-pressed={scope === "india"}
-            onClick={() => setScope("india")}
+            onClick={() => {
+              setScope("india");
+              setSelected(null);
+            }}
           >
             India
           </button>
@@ -133,14 +153,160 @@ function Legend({ swatch, label }: { swatch: string; label: string }) {
   );
 }
 
-function MapCanvas({ frame }: { frame: MapFrame }) {
+/** The card that opens when a dot is chosen: the value, the band, a trend. */
+function PinCard({ pin, onClose }: { pin: MapPin; onClose: () => void }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const href = safeMapHref(pin.href);
+
+  return (
+    <div className="pin-card" role="dialog" aria-label={`${pin.name} reading`}>
+      <div className="pin-card-head">
+        <div>
+          <p className="pin-card-name">{pin.name}</p>
+          {pin.place ? <p className="pin-card-place">{pin.place}</p> : null}
+        </div>
+        <button type="button" className="pin-card-close" onClick={onClose} aria-label="Close">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+      <div className="pin-card-value">
+        <span className="pin-card-number" style={{ color: bandAccent(pin.band) }}>
+          {pin.aqi ?? "—"}
+        </span>
+        <span className="pin-card-band">{pin.band ?? "Insufficient data"}</span>
+      </div>
+      <PinSpark slug={pin.slug} accent={bandAccent(pin.band)} official={pin.aqi} />
+      {href ? (
+        <button
+          type="button"
+          className="pin-card-open"
+          onClick={() => router.push(href)}
+        >
+          Open this station
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+type Spark = { date: string; aqi: number };
+
+function PinSpark({
+  slug,
+  accent,
+  official,
+}: {
+  slug: string;
+  accent: string;
+  official: number | null;
+}) {
+  const [points, setPoints] = useState<Spark[] | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let active = true;
+    setPoints(null);
+    setFailed(false);
+    fetch(`/api/trend?kind=station&slug=${encodeURIComponent(slug)}&range=1m`, {
+      signal: controller.signal,
+      headers: { accept: "application/json" },
+    })
+      .then(async (response) => {
+        if (!active) return;
+        if (!response.ok) {
+          setFailed(true);
+          return;
+        }
+        const data: unknown = await response.json();
+        if (!active) return;
+        setPoints(readSeries(data));
+      })
+      .catch((error: unknown) => {
+        if (!active || controller.signal.aborted || isAbort(error)) return;
+        setFailed(true);
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [slug]);
+
+  if (failed) {
+    return <p className="pin-spark-note">No history for this station yet.</p>;
+  }
+  if (!points) {
+    return <div className="pin-spark-skeleton" aria-hidden="true" />;
+  }
+  if (points.length < 2) {
+    return <p className="pin-spark-note">History begins after a few days of readings.</p>;
+  }
+
+  const width = 220;
+  const height = 44;
+  const values = [...points.map((point) => point.aqi)];
+  if (official != null) values.push(official);
+  const low = Math.min(...values);
+  const high = Math.max(...values);
+  const span = high - low || 1;
+  const path = points
+    .map((point, index) => {
+      const x = (index / (points.length - 1)) * width;
+      const y = height - ((point.aqi - low) / span) * (height - 6) - 3;
+      return `${index === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+    })
+    .join(" ");
+
+  return (
+    <div className="pin-spark">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Last 30 days">
+        <path d={path} fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" />
+      </svg>
+      <p className="pin-spark-note">
+        30-day model trend, {low}–{high}. Not the government number.
+      </p>    </div>
+  );
+}
+
+function readSeries(data: unknown): Spark[] {
+  if (!data || typeof data !== "object") return [];
+  const model = (data as { model?: unknown }).model;
+  if (!Array.isArray(model)) return [];
+  const points: Spark[] = [];
+  for (const row of model) {
+    if (!row || typeof row !== "object") continue;
+    const date = (row as { date?: unknown }).date;
+    const aqi = (row as { aqi?: unknown }).aqi;
+    if (typeof date !== "string" || typeof aqi !== "number" || !Number.isFinite(aqi)) {
+      continue;
+    }
+    points.push({ date, aqi });
+  }
+  return points;
+}
+
+function MapCanvas({
+  frame,
+  onSelect,
+}: {
+  frame: MapFrame;
+  onSelect: (pin: MapPin) => void;
+}) {
   const nodeRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef(frame);
   const paintRef = useRef<(() => void) | null>(null);
-  const router = useRouter();
-  const routerRef = useRef(router);
+  const onSelectRef = useRef(onSelect);
   frameRef.current = frame;
-  routerRef.current = router;
+  onSelectRef.current = onSelect;
 
   useEffect(() => {
     const node = nodeRef.current;
@@ -209,33 +375,70 @@ function MapCanvas({ frame }: { frame: MapFrame }) {
         if (source && "setData" in source) {
           (source as GeoJSONSource).setData(data);
           map.setPaintProperty("pins", "circle-stroke-color", strokeFor(readTheme()));
-          map.setPaintProperty("pin-labels", "text-halo-color", strokeFor(readTheme()));
         } else if (!map.getLayer("pins")) {
-          map.addSource("pins", { type: "geojson", data });
+          // Dense cities overlap at city zoom. Clusters keep every readable dot
+          // legible, and zooming in splits them into individual monitors.
+          map.addSource("pins", {
+            type: "geojson",
+            data,
+            cluster: true,
+            clusterRadius: 44,
+            clusterMaxZoom: 12,
+          });
+          map.addLayer({
+            id: "cluster-halo",
+            type: "circle",
+            source: "pins",
+            filter: ["has", "point_count"],
+            paint: {
+              "circle-radius": ["step", ["get", "point_count"], 23, 8, 27, 20, 31],
+              "circle-color": "rgba(0,0,0,0)",
+              "circle-stroke-width": 1.2,
+              "circle-stroke-color": strokeFor(readTheme()),
+              "circle-opacity": 0.55,
+            },
+          });
+          map.addLayer({
+            id: "clusters",
+            type: "circle",
+            source: "pins",
+            filter: ["has", "point_count"],
+            paint: {
+              "circle-radius": ["step", ["get", "point_count"], 18, 8, 22, 20, 26],
+              "circle-color": clusterFill(readTheme()),
+              "circle-stroke-width": 1.6,
+              "circle-stroke-color": strokeFor(readTheme()),
+            },
+          });
+          map.addLayer({
+            id: "cluster-labels",
+            type: "symbol",
+            source: "pins",
+            filter: ["has", "point_count"],
+            layout: {
+              "text-field": ["get", "point_count_abbreviated"],
+              "text-font": ["Noto Sans Bold"],
+              "text-size": 11,
+              "text-allow-overlap": true,
+            },
+            paint: {
+              "text-color": "#fffdf8",
+            },
+          });
           map.addLayer({
             id: "pins",
             type: "circle",
             source: "pins",
+            filter: ["!", ["has", "point_count"]],
             layout: {
               "circle-sort-key": ["get", "rank"],
             },
             paint: {
-              "circle-radius": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                3.2,
-                8,
-                6,
-                12,
-                8,
-                15,
-                11,
-                17,
-              ],
+              // Constant in screen pixels so a three-digit label clears the rim.
+              "circle-radius": DOT_RADIUS,
               "circle-color": ["get", "color"],
               "circle-opacity": ["case", ["==", ["get", "active"], 1], 0, 1],
-              "circle-stroke-width": 1.8,
+              "circle-stroke-width": 1.6,
               "circle-stroke-color": strokeFor(readTheme()),
             },
           });
@@ -243,32 +446,24 @@ function MapCanvas({ frame }: { frame: MapFrame }) {
             id: "pin-labels",
             type: "symbol",
             source: "pins",
-            filter: ["all", ["!=", ["get", "label"], ""], ["!=", ["get", "active"], 1]],
+            filter: [
+              "all",
+              ["!", ["has", "point_count"]],
+              ["!=", ["get", "label"], ""],
+              ["!=", ["get", "active"], 1],
+            ],
             layout: {
               "text-field": ["get", "label"],
               "text-font": ["Noto Sans Bold"],
-              "text-size": [
-                "interpolate",
-                ["linear"],
-                ["zoom"],
-                3.2,
-                8,
-                6,
-                10,
-                8,
-                11.5,
-                11,
-                12.5,
-              ],
-              "text-allow-overlap": false,
-              "text-padding": 1,
-              "text-ignore-placement": false,
+              "text-size": DOT_LABEL_SIZE,
+              "text-allow-overlap": true,
+              "text-ignore-placement": true,
               "symbol-sort-key": ["get", "rank"],
             },
             paint: {
               "text-color": ["get", "ink"],
               "text-halo-color": ["get", "color"],
-              "text-halo-width": 0.3,
+              "text-halo-width": 0.2,
             },
           });
         }
@@ -281,7 +476,7 @@ function MapCanvas({ frame }: { frame: MapFrame }) {
             marker = new maplibregl.Marker({
               element: activeMark(active, (href) => {
                 const safe = safeMapHref(href);
-                if (safe) routerRef.current.push(safe);
+                if (safe) map?.flyTo({ center: [active.lon, active.lat], zoom: 11 });
               }),
               anchor: "bottom",
             })
@@ -321,21 +516,40 @@ function MapCanvas({ frame }: { frame: MapFrame }) {
       paintRef.current = paint;
       map.on("style.load", paint);
       map.on("click", "pins", (event) => {
-        const href = safeMapHref(event.features?.[0]?.properties?.href);
-        if (href) routerRef.current.push(href);
+        const slug = String(event.features?.[0]?.properties?.slug ?? "");
+        const pin = frameRef.current.pins.find((item) => item.slug === slug);
+        if (pin) onSelectRef.current(pin);
       });
-      map.on("mousemove", "pins", (event) => {
-        if (!map) return;
-        map.getCanvas().style.cursor = "pointer";
+      map.on("click", "clusters", (event) => {
         const feature = event.features?.[0];
-        if (!feature) return;
-        const popup = popupRef(maplibregl, map);
-        popup.setLngLat(event.lngLat).setDOMContent(chip(feature.properties)).addTo(map);
+        const clusterId = Number(feature?.properties?.cluster_id);
+        if (!feature || !Number.isFinite(clusterId)) return;
+        const source = map?.getSource("pins") as GeoJSONSource | undefined;
+        source
+          ?.getClusterExpansionZoom(clusterId)
+          .then((zoom) => {
+            const geometry = feature.geometry as GeoJSON.Point;
+            map?.easeTo({
+              center: [geometry.coordinates[0], geometry.coordinates[1]],
+              zoom,
+              duration: reduced ? 0 : 500,
+            });
+          })
+          .catch(() => {
+            /* keep the current view if the cluster cannot be expanded */
+          });
+      });
+      map.on("mousemove", "pins", () => {
+        if (map) map.getCanvas().style.cursor = "pointer";
+      });
+      map.on("mousemove", "clusters", () => {
+        if (map) map.getCanvas().style.cursor = "zoom-in";
       });
       map.on("mouseleave", "pins", () => {
-        if (!map) return;
-        map.getCanvas().style.cursor = "";
-        popupRef(maplibregl, map).remove();
+        if (map) map.getCanvas().style.cursor = "";
+      });
+      map.on("mouseleave", "clusters", () => {
+        if (map) map.getCanvas().style.cursor = "";
       });
 
       resize = new ResizeObserver(() => {
@@ -385,8 +599,6 @@ function MapCanvas({ frame }: { frame: MapFrame }) {
   return <div ref={nodeRef} className="map-canvas" />;
 }
 
-const popups = new WeakMap<MapLibreMap, import("maplibre-gl").Popup>();
-
 function loadMapLibre(): Promise<typeof import("maplibre-gl")> {
   const specifier = new URL("/vendor/maplibre/maplibre-gl.mjs", window.location.href).href;
   const load = new Function(
@@ -394,42 +606,6 @@ function loadMapLibre(): Promise<typeof import("maplibre-gl")> {
     "return import(specifier)",
   ) as (specifier: string) => Promise<typeof import("maplibre-gl")>;
   return load(specifier);
-}
-
-function popupRef(
-  maplibregl: typeof import("maplibre-gl"),
-  map: MapLibreMap,
-): import("maplibre-gl").Popup {
-  const existing = popups.get(map);
-  if (existing) return existing;
-  const popup = new maplibregl.Popup({
-    closeButton: false,
-    closeOnClick: false,
-    className: "map-chip",
-    offset: 16,
-    maxWidth: "240px",
-  });
-  popups.set(map, popup);
-  return popup;
-}
-
-function chip(properties: GeoJSON.GeoJsonProperties): HTMLElement {
-  const root = document.createElement("div");
-  root.className = "map-chip-body";
-  const name = document.createElement("p");
-  name.className = "map-chip-name";
-  name.textContent = textOf(properties, "name");
-  const place = document.createElement("p");
-  place.className = "map-chip-place";
-  place.textContent = textOf(properties, "place");
-  const read = document.createElement("p");
-  read.className = "map-chip-read";
-  const number = document.createElement("span");
-  const aqi = textOf(properties, "aqi");
-  number.textContent = aqi || "—";
-  read.append(number, document.createTextNode(` ${textOf(properties, "band") || "Insufficient"}`));
-  root.append(name, place, read);
-  return root;
 }
 
 function activeMark(pin: MapPin, onOpen: (href: string) => void): HTMLElement {
@@ -443,6 +619,7 @@ function activeMark(pin: MapPin, onOpen: (href: string) => void): HTMLElement {
   stem.className = "map-active-stem";
   const dot = document.createElement("span");
   dot.className = "map-active-dot";
+  dot.style.color = bandAccent(pin.band);
   dot.style.background = bandAccent(pin.band);
   root.append(number, stem, dot);
   return root;
@@ -463,6 +640,7 @@ function toCollection(frame: MapFrame): GeoJSON.FeatureCollection {
         band: pin.band ?? "",
         href: pin.href,
         color: bandAccent(pin.band),
+        clusterColor: bandAccent(pin.band),
         ink: inkFor(pin.band),
         rank: pin.aqi == null ? 0 : pin.aqi,
         active: pin.slug === frame.activeSlug ? 1 : 0,
@@ -476,9 +654,9 @@ function fit(map: MapLibreMap, frame: MapFrame, reduced: boolean) {
     map.jumpTo({ center: [80.2, 22.6], zoom: 3.7 });
     return;
   }
-  if (frame.pins.length === 1 && !frame.user) {
+    if (frame.pins.length === 1 && !frame.user) {
     const pin = frame.pins[0];
-    const move = { center: [pin.lon, pin.lat] as [number, number], zoom: 10.5 };
+    const move = { center: [pin.lon, pin.lat] as [number, number], zoom: 9.5 };
     if (reduced) map.jumpTo(move);
     else map.easeTo({ ...move, duration: 600 });
     return;
@@ -506,8 +684,8 @@ function fit(map: MapLibreMap, frame: MapFrame, reduced: boolean) {
       [east, north],
     ],
     {
-      padding: { top: 116, right: 40, bottom: 76, left: 32 },
-      maxZoom: 11.4,
+      padding: { top: 120, right: 44, bottom: 80, left: 36 },
+      maxZoom: 10.6,
       duration: reduced ? 0 : 700,
     },
   );
@@ -521,15 +699,15 @@ function strokeFor(theme: ThemeName): string {
   return theme === "dark" ? "#100e0c" : "#fffdf8";
 }
 
-/** Dark ink on the saturated warm bands, light ink on the deep reds. */
+/** Clusters are counts, not readings, so they stay neutral. */
+function clusterFill(theme: ThemeName): string {
+  return theme === "dark" ? "#3a352e" : "#242019";
+}
+
+/** Dark ink on the warm bands, light ink on the deep reds. */
 function inkFor(band: Band | null): string {
   if (band === "Very Poor" || band === "Severe") return "#fffdf8";
   return "#17140f";
-}
-
-function textOf(properties: GeoJSON.GeoJsonProperties, key: string): string {
-  const value = properties?.[key];
-  return typeof value === "string" ? value : "";
 }
 
 function isAbort(error: unknown): boolean {

@@ -13,6 +13,7 @@ import { loadStationPage } from "@/components/reading/load";
 import { PollutantBoard } from "@/components/reading/PollutantBoard";
 import { ReadingStage } from "@/components/reading/ReadingStage";
 import { ReadingSkeleton } from "@/components/reading/ReadingSkeleton";
+import { WeatherCard } from "@/components/reading/WeatherCard";
 import { TrendChart } from "@/components/trend/TrendChart";
 import {
   officialStation,
@@ -88,6 +89,7 @@ async function StationReading({ params }: { params: StationParams }) {
               latitude={station.latitude}
               longitude={station.longitude}
             />
+            <WeatherCard latitude={station.latitude} longitude={station.longitude} />
           </FactCard>
         }
         map={

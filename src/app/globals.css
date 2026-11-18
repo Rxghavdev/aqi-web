@@ -2001,3 +2001,198 @@ button {
     flex: 1;
   }
 }
+
+/* Pin detail card ------------------------------------------------------- */
+
+.pin-card {
+  position: absolute;
+  z-index: 3;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 3.4rem;
+  max-width: 22rem;
+  padding: 0.85rem 0.9rem 0.9rem;
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--card) 96%, transparent);
+  box-shadow: 0 12px 32px color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
+.pin-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.pin-card-name {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.pin-card-place {
+  margin: 0.12rem 0 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.3;
+}
+
+.pin-card-close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--ink);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.pin-card-value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.pin-card-number {
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.pin-card-band {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pin-spark {
+  margin-top: 0.55rem;
+}
+
+.pin-spark svg {
+  display: block;
+  width: 100%;
+  height: 2.6rem;
+}
+
+.pin-spark-skeleton {
+  height: 2.6rem;
+  margin-top: 0.55rem;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.pin-spark-note {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.pin-card-open {
+  width: 100%;
+  margin-top: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+/* Weather --------------------------------------------------------------- */
+
+.weather-card {
+  min-width: 0;
+  padding: 1.1rem 1.2rem 1.2rem;
+  border: 1px solid var(--hairline);
+  border-radius: 26px;
+  background: var(--card);
+}
+
+.weather-top {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+}
+
+.weather-temp {
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+
+.weather-temp span {
+  margin-left: 0.1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.weather-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.2;
+}
+
+.weather-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin: 0.85rem 0 0;
+}
+
+.weather-facts dt {
+  color: var(--muted);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.weather-facts dd {
+  margin: 0.18rem 0 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.weather-note {
+  margin: 0.7rem 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+
+.weather-skeleton {
+  height: 5.4rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+@media (min-width: 960px) {
+  .pin-card {
+    left: 0.9rem;
+    bottom: 0.9rem;
+    right: auto;
+    width: 21rem;
+  }
+}

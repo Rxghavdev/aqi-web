@@ -14,6 +14,7 @@ import { PollutantBoard } from "@/components/reading/PollutantBoard";
 import { ReadingLink } from "@/components/reading/ReadingLink";
 import { ReadingStage } from "@/components/reading/ReadingStage";
 import { ReadingSkeleton } from "@/components/reading/ReadingSkeleton";
+import { WeatherCard } from "@/components/reading/WeatherCard";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { TrendChart } from "@/components/trend/TrendChart";
 import {
@@ -107,7 +108,11 @@ async function CityReading({ params }: { params: CityParams }) {
                 },
               ]}
               note="CPCB averages the stations in a city. One monitor can be worse than the average."
-            />
+            >
+              {first ? (
+                <WeatherCard latitude={first.latitude} longitude={first.longitude} />
+              ) : null}
+            </FactCard>
           }
           map={
             <StationMap
