@@ -418,7 +418,7 @@ function MapCanvas({
             layout: {
               "text-field": ["get", "point_count_abbreviated"],
               "text-font": ["Noto Sans Bold"],
-              "text-size": 11,
+              "text-size": 12,
               "text-allow-overlap": true,
             },
             paint: {

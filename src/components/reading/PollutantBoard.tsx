@@ -83,21 +83,21 @@ export function PollutantBoard({
                 aria-controls={panelId}
                 onClick={() => setOpen(expanded ? null : reading.id)}
               >
-                <span className="pollutant-name">
+                <span className="pollutant-top">
                   <span className="pollutant-label">{pollutantLabel(reading.id)}</span>
                   {top ? <span className="pollutant-flag">Sets the number</span> : null}
-                </span>
-                <span className="pollutant-track" aria-hidden="true">
-                  <span
-                    className="pollutant-fill"
-                    style={{ width: `${width}%`, background: bandAccent(band) }}
-                  />
                 </span>
                 <span className="pollutant-read">
                   <span className="pollutant-value">{value}</span>
                   <span className="pollutant-band" style={{ color: bandAccent(band) }}>
                     {bandLabel(band)}
                   </span>
+                </span>
+                <span className="pollutant-track" aria-hidden="true">
+                  <span
+                    className="pollutant-fill"
+                    style={{ width: `${width}%`, background: bandAccent(band) }}
+                  />
                 </span>
                 <span className="pollutant-cue" aria-hidden="true" />
               </button>
