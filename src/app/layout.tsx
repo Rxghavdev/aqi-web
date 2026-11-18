@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Outfit, Space_Grotesk } from "next/font/google";
+import { Inter_Tight } from "next/font/google";
 import Script from "next/script";
 import { LocationSheet } from "@/components/place/LocationSheet";
 import { Footer } from "@/components/shell/Footer";
@@ -7,16 +7,10 @@ import { Header } from "@/components/shell/Header";
 import { SITE_DESCRIPTION, siteUrl } from "@/lib/site";
 import "./globals.css";
 
-const outfit = Outfit({
+const app = Inter_Tight({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-outfit",
-});
-
-const display = Space_Grotesk({
-  subsets: ["latin"],
-  display: "swap",
-  variable: "--font-display",
+  variable: "--font-app",
 });
 
 export const metadata: Metadata = {
@@ -32,7 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${outfit.variable} ${display.variable} h-full`}
+      className={`${app.variable} h-full`}
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col antialiased">
