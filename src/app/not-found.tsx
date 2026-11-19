@@ -1,20 +1,16 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { NotFoundView } from "@/components/pages/NotFoundView";
 
 export const metadata: Metadata = {
-  title: "Not found",
+  title: "Page not found",
 };
 
 export default function NotFound() {
   return (
-    <div className="copy">
-      <h1 className="page-title">This page is not here.</h1>
-      <p className="lede">The address does not match a reading or a page on AQI Desk.</p>
-      <p className="mt-6">
-        <Link href="/" className="text-link">
-          Back to the readings
-        </Link>
-      </p>
-    </div>
+    <NotFoundView
+      eyebrow="Error 404"
+      title="This page does not exist."
+      lede="The address may be mistyped or out of date. Search for a city or station, or pick one of the places below."
+    />
   );
 }

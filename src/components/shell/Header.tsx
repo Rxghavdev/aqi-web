@@ -1,19 +1,27 @@
-import Link from "next/link";
-import { SITE_NAME } from "@/lib/site";
+import { Suspense } from "react";
+import { Logo } from "@/components/brand/Logo";
+import { SearchLauncher } from "@/components/search/SearchLauncher";
+import { HeaderScroll } from "./HeaderScroll";
+import { DesktopNav, MobileNav } from "./Nav";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Header() {
   return (
-    <header className="border-b border-hairline">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4 md:px-10">
-        <Link href="/" className="font-medium tracking-tight text-ink">
-          {SITE_NAME}
-        </Link>
-        <nav aria-label="Primary">
-          <Link href="/methodology" className="text-sm text-muted hover:text-ink">
-            Methodology
-          </Link>
-        </nav>
+    <header id="site-header" className="site-header">
+      <div className="site-header-inner">
+        <Logo />
+        <Suspense fallback={null}>
+          <DesktopNav />
+        </Suspense>
+        <div className="site-actions">
+          <SearchLauncher />
+          <ThemeToggle />
+          <Suspense fallback={null}>
+            <MobileNav />
+          </Suspense>
+        </div>
       </div>
+      <HeaderScroll targetId="site-header" />
     </header>
   );
 }

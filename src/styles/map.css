@@ -1,0 +1,976 @@
+/* Map: the stage layout that seats it beside the reading, the frame, the chrome
+   on top of it, the pin card and the expanded dialog. Owned by the map workstream. */
+
+/* Stage ------------------------------------------------------------------ */
+
+.stage {
+  display: grid;
+  grid-template-areas:
+    "read"
+    "facts"
+    "map";
+  gap: 0.9rem;
+  min-width: 0;
+}
+
+.stage-read,
+.stage-facts {
+  min-width: 0;
+}
+
+.stage-read {
+  grid-area: read;
+}
+
+.stage-facts {
+  grid-area: facts;
+}
+
+.stage-map {
+  grid-area: map;
+}
+
+.ask-map {
+  grid-area: auto;
+}
+
+@media (min-width: 960px) {
+  .stage {
+    grid-template-columns: minmax(21rem, 25rem) minmax(0, 1fr);
+    grid-template-areas:
+      "read map"
+      "facts map";
+    gap: 0.9rem 1.1rem;
+    align-items: start;
+  }
+}
+
+/* Frame ------------------------------------------------------------------ */
+
+/* .stage-map is also the empty placeholder the home page shows while it
+   loads, so the placeholder and the real map share one size. */
+.map-frame,
+.stage-map {
+  --map-h: clamp(260px, 70vw, 300px);
+  --map-bg: color-mix(in srgb, var(--ink) 7%, var(--paper));
+  --map-lift:
+    0 1px 2px rgb(26 23 20 / 0.08), 0 6px 18px rgb(26 23 20 / 0.1);
+  position: relative;
+  isolation: isolate;
+  container-type: inline-size;
+  min-width: 0;
+  height: var(--map-h);
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 28px;
+  background: var(--map-bg);
+}
+
+:root[data-theme="dark"] .map-frame,
+:root[data-theme="dark"] .stage-map {
+  --map-lift: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 22px rgb(0 0 0 / 0.45);
+}
+
+@media (min-width: 640px) {
+  .map-frame,
+  .stage-map {
+    --map-h: clamp(320px, 44vw, 360px);
+  }
+}
+
+@media (min-width: 960px) {
+  .map-frame,
+  .stage-map {
+    --map-h: clamp(340px, 30vw, 400px);
+  }
+
+  /* Home: the map spans the reading and the facts, so it fills that column
+     instead of stopping early and leaving a blank under it. */
+  .stage > .stage-map {
+    align-self: stretch;
+    position: relative;
+    top: auto;
+    height: auto;
+    min-height: var(--map-h);
+  }
+
+  /* Home: the map sits beside the intro copy, centred on it. */
+  .ask-home .map-frame {
+    --map-h: clamp(320px, 27vw, 360px);
+    align-self: center;
+  }
+}
+
+.map-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  font-family: var(--font-app), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* A shimmer of the same size stands in until the tiles arrive. */
+.map-loading,
+.stage-map:empty::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    110deg,
+    transparent 28%,
+    color-mix(in srgb, var(--ink) 6%, transparent) 50%,
+    transparent 72%
+  );
+  background-size: 220% 100%;
+  animation: map-sheen 1.8s linear infinite;
+  transition: opacity 260ms ease;
+  pointer-events: none;
+}
+
+.map-frame[data-ready] .map-loading {
+  opacity: 0;
+  animation: none;
+}
+
+@keyframes map-sheen {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+/* Top-left: the "Official" chip and the extent switch ---------------------- */
+
+.map-tl {
+  position: absolute;
+  z-index: 3;
+  top: 0.6rem;
+  left: 0.6rem;
+  right: 3.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  pointer-events: none;
+}
+
+.map-tl > * {
+  pointer-events: auto;
+}
+
+.map-badge,
+.map-scope {
+  border: 1px solid var(--hairline);
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  box-shadow: var(--map-lift);
+  backdrop-filter: blur(8px);
+}
+
+.map-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.4rem;
+  height: 28px;
+  margin: 0;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.map-live {
+  position: relative;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--num-good);
+}
+
+.map-live::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--num-good);
+  animation: map-ping 2.2s cubic-bezier(0.2, 0.7, 0.3, 1) infinite;
+}
+
+.map-scope {
+  display: inline-flex;
+  min-width: 0;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+}
+
+.map-scope button {
+  position: relative;
+  min-width: 0;
+  height: 22px;
+  padding: 0 0.62rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.map-scope button::before {
+  content: "";
+  position: absolute;
+  inset: -6px -1px;
+}
+
+.map-scope button:hover:not([aria-pressed="true"]) {
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+
+.map-scope button[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* Top-right: expand, zoom, locate ------------------------------------------ */
+
+.map-tools {
+  position: absolute;
+  z-index: 3;
+  top: 0.6rem;
+  right: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.map-btn {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card) 94%, transparent);
+  color: var(--ink);
+  box-shadow: var(--map-lift);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease, opacity 140ms ease;
+}
+
+.map-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--ink) 26%, var(--hairline));
+  background: var(--card);
+}
+
+.map-btn:active:not(:disabled) {
+  background: color-mix(in srgb, var(--ink) 8%, var(--card));
+}
+
+.map-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.map-zoom {
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  box-shadow: var(--map-lift);
+}
+
+.map-zoom .map-btn {
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.map-zoom .map-btn:first-child {
+  border-radius: 12px 12px 0 0;
+  border-bottom-color: transparent;
+}
+
+.map-zoom .map-btn:last-child {
+  border-radius: 0 0 12px 12px;
+}
+
+.map-btn:focus-visible,
+.map-scope button:focus-visible,
+.map-skip:focus-visible,
+.pin-card-close:focus-visible,
+.pin-card-open:focus-visible,
+.pin-spark-plot:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+@media (pointer: coarse) {
+  .map-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+  }
+
+  .map-zoom .map-btn:first-child {
+    border-radius: 14px 14px 0 0;
+  }
+
+  .map-zoom .map-btn:last-child {
+    border-radius: 0 0 14px 14px;
+  }
+
+  .map-zoom {
+    border-radius: 14px;
+  }
+
+  .map-scope {
+    padding: 3px;
+  }
+
+  .map-scope button {
+    height: 30px;
+    padding: 0 0.75rem;
+  }
+
+  .map-badge {
+    height: 36px;
+  }
+
+  .map-tl {
+    right: 4.4rem;
+  }
+
+  .map-notice,
+  .map-skip:focus {
+    top: 3.4rem;
+  }
+}
+
+/* Bottom-left: the AQI legend ---------------------------------------------- */
+
+.map-legend {
+  position: absolute;
+  z-index: 3;
+  left: 0.6rem;
+  bottom: 0.6rem;
+  display: flex;
+  gap: 2px;
+  width: min(11.5rem, calc(100% - 4.2rem));
+  margin: 0;
+  padding: 0.42rem 0.5rem;
+  list-style: none;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  box-shadow: var(--map-lift);
+  backdrop-filter: blur(8px);
+}
+
+.map-legend li {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+  flex-direction: column;
+  gap: 0.28rem;
+}
+
+.map-legend-bar {
+  display: block;
+  height: 6px;
+  border-radius: 2px;
+}
+
+.map-legend li:first-child .map-legend-bar {
+  border-radius: 3px 2px 2px 3px;
+}
+
+.map-legend li:last-child .map-legend-bar {
+  border-radius: 2px 3px 3px 2px;
+}
+
+/* Narrow: colours only. The names stay available to screen readers. */
+.map-legend-name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@container (min-width: 520px) {
+  .map-legend {
+    width: min(26rem, calc(100% - 4.2rem));
+    padding: 0.45rem 0.65rem 0.4rem;
+  }
+
+  .map-legend-name {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+    color: var(--muted);
+    font-size: 0.625rem;
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+  }
+}
+
+/* The pin card takes the legend's corner while it is open. */
+.map-frame[data-card="open"] .map-legend {
+  visibility: hidden;
+}
+
+/* Status pill ------------------------------------------------------------- */
+
+.map-notice {
+  position: absolute;
+  z-index: 4;
+  top: 2.9rem;
+  left: 0.6rem;
+  max-width: calc(100% - 4.4rem);
+  margin: 0;
+  padding: 0.42rem 0.8rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: var(--map-lift);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.25;
+  animation: map-pop 180ms ease-out;
+}
+
+@keyframes map-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Screen-reader jump link: shows only when focused. */
+.map-skip {
+  position: absolute;
+  z-index: 6;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.map-skip:focus {
+  top: 2.9rem;
+  left: 0.6rem;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0.45rem 0.8rem;
+  overflow: visible;
+  clip-path: none;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+/* Markers ------------------------------------------------------------------ */
+
+/* The station the page is about: the same face as a dot, plus a ping. */
+.map-active {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: var(--pin);
+  cursor: pointer;
+  outline: none;
+}
+
+.map-active-ping {
+  position: absolute;
+  inset: 1px;
+  border-radius: 999px;
+  background: var(--pin);
+  opacity: 0.5;
+  animation: map-ping 2.2s cubic-bezier(0.2, 0.7, 0.3, 1) infinite;
+}
+
+.map-active-core {
+  position: relative;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 2.5px solid #fffdf8;
+  border-radius: 999px;
+  background: var(--pin);
+  color: var(--pin-ink);
+  box-shadow: 0 2px 8px rgb(20 14 8 / 0.42);
+  font-family: var(--font-app), ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  transition: transform 140ms ease;
+}
+
+.map-active:hover .map-active-core {
+  transform: scale(1.08);
+}
+
+.map-active:focus-visible .map-active-core {
+  box-shadow:
+    0 0 0 2px #1a1714,
+    0 0 0 4px #fffdf8,
+    0 2px 8px rgb(20 14 8 / 0.42);
+}
+
+@keyframes map-ping {
+  0% {
+    opacity: 0.55;
+    transform: scale(0.9);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(2.2);
+  }
+}
+
+.map-you {
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  border: 3px solid #fffdf8;
+  border-radius: 999px;
+  background: #2563eb;
+  box-shadow:
+    0 0 0 7px rgb(37 99 235 / 0.2),
+    0 1px 4px rgb(20 14 8 / 0.4);
+}
+
+/* MapLibre's own chrome ---------------------------------------------------- */
+
+.map-canvas .maplibregl-ctrl-bottom-right {
+  right: 0.45rem;
+  bottom: 0.45rem;
+}
+
+.map-canvas .maplibregl-ctrl-attrib.maplibregl-compact {
+  min-height: 22px;
+  margin: 0;
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  box-shadow: none;
+  color: var(--ink);
+  font-size: 10px;
+}
+
+.map-canvas .maplibregl-ctrl-attrib a {
+  color: var(--muted);
+}
+
+.map-canvas .maplibregl-ctrl-attrib-button {
+  width: 22px;
+  height: 22px;
+}
+
+:root[data-theme="dark"] .map-canvas .maplibregl-ctrl-attrib-button {
+  filter: invert(1);
+}
+
+/* Desktop only: asks for Ctrl or Command with the scroll wheel. On touch the
+   map shows its own one-time hint instead. */
+.map-canvas .maplibregl-cooperative-gesture-screen {
+  background: color-mix(in srgb, var(--ink) 58%, transparent);
+  color: var(--paper);
+  font-family: var(--font-app), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+}
+
+@media (pointer: coarse) {
+  .map-canvas .maplibregl-cooperative-gesture-screen {
+    display: none;
+  }
+}
+
+/* Pin card ----------------------------------------------------------------- */
+
+.pin-card {
+  position: absolute;
+  z-index: 4;
+  left: 0.6rem;
+  bottom: 0.6rem;
+  width: min(21rem, calc(100% - 4.2rem));
+  max-height: calc(100% - 1.2rem);
+  overflow: auto;
+  padding: 0.7rem 0.85rem 0.8rem;
+  border: 1px solid var(--hairline);
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: var(--map-lift);
+  animation: map-card-in 170ms ease-out;
+}
+
+@keyframes map-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pin-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.pin-card-title {
+  min-width: 0;
+}
+
+.pin-card-name,
+.pin-card-place {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pin-card-name {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+}
+
+.pin-card-place {
+  margin-top: 0.1rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.pin-card-close {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* Grows the tap area to 44px without growing the button. */
+.pin-card-close::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+
+.pin-card-close:hover {
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
+.pin-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+}
+
+.pin-card-value {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.pin-card-number {
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.pin-card-band {
+  min-width: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.pin-card-open {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  height: 36px;
+  padding: 0 0.85rem 0 1rem;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  transition: opacity 140ms ease;
+}
+
+.pin-card-open:hover {
+  opacity: 0.86;
+}
+
+@media (pointer: coarse) {
+  .pin-card-open {
+    height: 44px;
+  }
+}
+
+/* Trend sparkline ---------------------------------------------------------- */
+
+.pin-spark {
+  margin-top: 0.5rem;
+}
+
+.pin-spark-skeleton {
+  height: 76px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.pin-spark-note {
+  margin: 0.55rem 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.pin-spark-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 22px;
+}
+
+.pin-spark-read {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.pin-spark-num {
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.pin-spark-tag {
+  padding: 2px 6px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.pin-spark-tag.is-official {
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+  color: var(--ink);
+}
+
+/* Modelled values read as lighter and hollow, never as the official number. */
+.pin-spark-tag.is-estimate {
+  border-style: dashed;
+  border-color: var(--muted);
+  color: var(--muted);
+}
+
+.pin-spark-date {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.pin-spark-key {
+  display: flex;
+  flex: none;
+  gap: 0.6rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.pin-spark-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.pin-spark-key i {
+  display: block;
+  width: 14px;
+  height: 0;
+  border-top: 2px solid var(--spark);
+  border-radius: 2px;
+}
+
+.pin-spark-key .key-estimate {
+  border-top: 2px dashed var(--muted);
+}
+
+.pin-spark-plot {
+  margin-top: 0.15rem;
+  border-radius: 8px;
+  cursor: crosshair;
+  touch-action: pan-y;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pin-spark-plot svg {
+  display: block;
+  width: 100%;
+  height: 52px;
+  overflow: visible;
+}
+
+.spark-official-line {
+  stroke: var(--spark);
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.spark-official-dot {
+  fill: var(--spark);
+  stroke: var(--card);
+  stroke-width: 1.5;
+}
+
+.spark-estimate-line {
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.spark-estimate-dot {
+  fill: var(--card);
+  stroke: var(--muted);
+  stroke-width: 1.2;
+}
+
+.spark-guide {
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.spark-pick-official {
+  fill: var(--spark);
+  stroke: var(--card);
+  stroke-width: 2;
+}
+
+.spark-pick-estimate {
+  fill: var(--card);
+  stroke: var(--muted);
+  stroke-width: 2;
+}
+
+/* Expanded map dialog ------------------------------------------------------ */
+
+.map-dialog {
+  position: fixed;
+  inset: 0;
+  width: min(1280px, calc(100vw - 1rem));
+  max-width: none;
+  height: min(920px, calc(100dvh - 1rem));
+  max-height: none;
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: 24px;
+  background: var(--card);
+  color: var(--ink);
+}
+
+.map-dialog[open] {
+  animation: map-pop 180ms ease-out;
+}
+
+.map-dialog::backdrop {
+  background: rgb(12 9 6 / 0.62);
+  backdrop-filter: blur(3px);
+}
+
+.map-dialog .map-frame {
+  position: absolute;
+  inset: 0;
+  height: auto;
+  border: 0;
+  border-radius: 0;
+}
+
+@media (min-width: 720px) {
+  .map-dialog {
+    width: min(1280px, calc(100vw - 3rem));
+    height: min(920px, calc(100dvh - 3rem));
+    border-radius: 28px;
+  }
+}

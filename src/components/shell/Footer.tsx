@@ -1,24 +1,48 @@
 import Link from "next/link";
+import { Logo } from "@/components/brand/Logo";
+import { SITE_CLAIM, SITE_NAME, SITE_TAGLINE } from "@/lib/site";
+import { ABOUT_LINKS, EXPLORE_LINKS } from "./links";
+import { Year } from "./Year";
 
 export function Footer() {
   return (
-    <footer className="mt-auto border-t border-hairline text-sm leading-relaxed text-muted">
-      <div className="mx-auto max-w-6xl px-5 py-8 md:px-10">
-        <p>
-          Readings from the Central Pollution Control Board via data.gov.in. This
-          is not a government website.
-        </p>
-        <nav aria-label="About this site" className="mt-3 flex flex-wrap gap-x-5 gap-y-2">
-          <Link href="/methodology" className="text-ink underline underline-offset-4">
-            Methodology
-          </Link>
-          <Link href="/about" className="text-ink underline underline-offset-4">
-            About
-          </Link>
-          <Link href="/privacy" className="text-ink underline underline-offset-4">
-            Privacy
-          </Link>
-        </nav>
+    <footer className="site-footer">
+      <div className="site-footer-inner">
+        <div className="footer-grid">
+          <div className="footer-brand">
+            <Logo size={26} />
+            <p>{SITE_TAGLINE}</p>
+          </div>
+          <nav className="footer-col" aria-labelledby="footer-explore">
+            <h2 id="footer-explore">Explore</h2>
+            <ul>
+              {EXPLORE_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href}>{link.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <nav className="footer-col" aria-labelledby="footer-about">
+            <h2 id="footer-about">About</h2>
+            <ul>
+              {ABOUT_LINKS.map((link) => (
+                <li key={link.href}>
+                  <Link href={link.href}>{link.label}</Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
+        <div className="footer-legal">
+          <p className="footer-claim">{SITE_CLAIM}</p>
+          <div className="footer-meta">
+            <p>Data: Central Pollution Control Board (CPCB) via data.gov.in</p>
+            <p>
+              © <Year /> {SITE_NAME}
+            </p>
+          </div>
+        </div>
       </div>
     </footer>
   );

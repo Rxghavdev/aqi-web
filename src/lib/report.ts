@@ -1,6 +1,7 @@
 import { slugify } from "./aggregate.ts";
 import { haversineKm, roundKm } from "./geo.ts";
-import { hourlyModelAqi } from "./sources/open-meteo.ts";
+import { kickRefresh } from "./refresh.ts";
+import { hourlyModelAqiWithin } from "./sources/open-meteo.ts";
 import { readSnapshot, type SnapshotFile } from "./snapshot.ts";
 import type {
   CityAqi,
@@ -10,6 +11,16 @@ import type {
   Spike,
   StationAqi,
 } from "./types.ts";
+
+export type MapCityPoint = {
+  slug: string;
+  name: string;
+  place: string;
+  lat: number;
+  lon: number;
+  aqi: number | null;
+  band: CityAqi["band"];
+};
 
 /**
  * Public data API for the UI.
@@ -37,25 +48,101 @@ export async function getSnapshotMeta(): Promise<SnapshotMeta> {
 }
 
 export async function listCities(): Promise<CityAqi[]> {
+  kickRefresh();
   const { snapshot } = await readSnapshot();
   if (!snapshot) return [];
   return snapshot.cities.slice().sort(compareCities);
 }
 
+/** Every station, for the sitemap. */
+export async function listStations(): Promise<StationAqi[]> {
+  const { snapshot } = await readSnapshot();
+  if (!snapshot) return [];
+  return snapshot.stations;
+}
+
+/** City averages placed at the mean of their station coordinates. */
+export async function listMapCities(): Promise<MapCityPoint[]> {
+  kickRefresh();
+  const { snapshot } = await readSnapshot();
+  if (!snapshot) return [];
+  const grouped = new Map<string, { lat: number; lon: number; count: number }>();
+  for (const station of snapshot.stations) {
+    if (!usableCoord(station.latitude, station.longitude)) continue;
+    const key = `${station.city}\0${station.state}`;
+    const current = grouped.get(key);
+    if (current) {
+      current.lat += station.latitude;
+      current.lon += station.longitude;
+      current.count += 1;
+    } else {
+      grouped.set(key, {
+        lat: station.latitude,
+        lon: station.longitude,
+        count: 1,
+      });
+    }
+  }
+  const points: MapCityPoint[] = [];
+  for (const city of snapshot.cities) {
+    const group = grouped.get(`${city.city}\0${city.state}`);
+    if (!group || group.count === 0) continue;
+    points.push({
+      slug: city.slug,
+      name: city.city,
+      place: city.state,
+      lat: roundCoord(group.lat / group.count),
+      lon: roundCoord(group.lon / group.count),
+      aqi: city.aqi,
+      band: city.band,
+    });
+  }
+  return points;
+}
+
 export async function getCity(
   slug: string,
-): Promise<{ city: CityAqi; stations: StationAqi[] } | null> {
+): Promise<{ city: CityAqi; stations: StationAqi[]; nearby: StationAqi[] } | null> {
+  kickRefresh();
   const { snapshot } = await readSnapshot();
   if (!snapshot) return null;
   const city = snapshot.cities.find((item) => item.slug === slug);
   if (!city) return null;
-  return { city, stations: stationsIn(snapshot, city).sort(compareStations) };
+  const stations = stationsIn(snapshot, city).sort(compareStations);
+  const point = centroid(stations);
+  return {
+    city,
+    stations,
+    nearby: point ? stationsAround(snapshot, point.latitude, point.longitude, 60) : stations,
+  };
 }
 
 export async function getStation(slug: string): Promise<StationAqi | null> {
+  const page = await getStationPage(slug);
+  return page?.station ?? null;
+}
+
+export async function getStationPage(
+  slug: string,
+): Promise<{
+  station: StationAqi;
+  city: CityAqi | null;
+  nearby: StationAqi[];
+} | null> {
+  kickRefresh();
   const { snapshot } = await readSnapshot();
   if (!snapshot) return null;
-  return snapshot.stations.find((station) => station.slug === slug) ?? null;
+  const station = snapshot.stations.find((item) => item.slug === slug);
+  if (!station) return null;
+  const city =
+    snapshot.cities.find(
+      (item) => item.city === station.city && item.state === station.state,
+    ) ?? null;
+  return {
+    station,
+    city,
+    nearby: stationsAround(snapshot, station.latitude, station.longitude, 60),
+  };
 }
 
 export async function getPlace(input: {
@@ -63,15 +150,18 @@ export async function getPlace(input: {
   lat?: number;
   lon?: number;
 }): Promise<PlaceReport | null> {
+  kickRefresh();
   const { snapshot } = await readSnapshot();
   if (!snapshot || snapshot.stations.length === 0) return null;
 
-  const query = input.query?.trim() ?? "";
+  const query = (input.query?.trim() ?? "").slice(0, 80);
   const hasPoint =
     typeof input.lat === "number" &&
     typeof input.lon === "number" &&
-    Number.isFinite(input.lat) &&
-    Number.isFinite(input.lon);
+    input.lat >= -90 &&
+    input.lat <= 90 &&
+    input.lon >= -180 &&
+    input.lon <= 180;
 
   if (hasPoint) {
     return placeFromPoint(snapshot, input.lat as number, input.lon as number, query);
@@ -81,7 +171,7 @@ export async function getPlace(input: {
 }
 
 export async function searchPlaces(query: string): Promise<SearchHit[]> {
-  const trimmed = query.trim();
+  const trimmed = query.trim().slice(0, 80);
   if (!trimmed) return [];
   const { snapshot } = await readSnapshot();
   if (!snapshot) return [];
@@ -166,6 +256,7 @@ async function placeFromPoint(
     nearest,
     distanceKm: roundKm(nearestKm),
     stations: [nearest, ...others],
+    nearby: stationsAround(snapshot, nearest.latitude, nearest.longitude, 60),
     spike: null,
     snapshotAt: snapshot.snapshotAt,
   };
@@ -186,6 +277,7 @@ async function placeFromQuery(
       nearest: null,
       distanceKm: null,
       stations,
+      nearby: stations,
       spike: null,
       snapshotAt: snapshot.snapshotAt,
     };
@@ -209,6 +301,7 @@ async function placeFromQuery(
     nearest: station,
     distanceKm: null,
     stations: [station, ...others],
+    nearby: stationsAround(snapshot, station.latitude, station.longitude, 60),
     spike: null,
     snapshotAt: snapshot.snapshotAt,
   };
@@ -282,6 +375,42 @@ function stationsIn(
   );
 }
 
+/**
+ * Monitors around a point, nearest first, capped so the map stays readable.
+ * A radius in kilometres, not a city boundary: air does not stop at one.
+ */
+function stationsAround(
+  snapshot: SnapshotFile,
+  lat: number,
+  lon: number,
+  radiusKm: number,
+): StationAqi[] {
+  const found = snapshot.stations
+    .map((station) => ({
+      station,
+      km: haversineKm(lat, lon, station.latitude, station.longitude),
+    }))
+    .filter((item) => item.km <= radiusKm)
+    .sort((a, b) => a.km - b.km)
+    .slice(0, 40)
+    .map((item) => item.station);
+  return found;
+}
+
+function usableCoord(lat: number, lon: number): boolean {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lon) &&
+    Math.abs(lat) <= 90 &&
+    Math.abs(lon) <= 180 &&
+    !(lat === 0 && lon === 0)
+  );
+}
+
+function roundCoord(value: number): number {
+  return Math.round(value * 10000) / 10000;
+}
+
 function centroid(
   stations: readonly StationAqi[],
 ): { latitude: number; longitude: number } | null {
@@ -298,7 +427,9 @@ async function spikeFor(
   latitude: number,
   longitude: number,
 ): Promise<Spike | null> {
-  const model = await hourlyModelAqi(latitude, longitude);
+  // Optional enrichment: from memory, or within a short deadline, or skipped.
+  // The slow fetch carries on in the background and fills the cache.
+  const model = await hourlyModelAqiWithin(latitude, longitude);
   if (!model.ok) return null;
 
   const officialAqi =

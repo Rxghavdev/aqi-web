@@ -1,16 +1,34 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AqiFigure } from "@/components/reading/AqiFigure";
-import { loadStation } from "@/components/reading/load";
-import { ReadingSkeleton } from "@/components/reading/ReadingSkeleton";
+import { StationMap } from "@/components/map/StationMap";
+import { stationPins } from "@/components/map/pins";
 import {
-  mapHref,
+  PlaceHead,
+  PlaceLayout,
+  PlaceSection,
+} from "@/components/place/PlaceLayout";
+import { PlaceHero, PollutantsSection } from "@/components/place/PlaceParts";
+import { StationDistance } from "@/components/place/StationDistance";
+import { BandLegend } from "@/components/reading/BandScale";
+import { CityAverageLink } from "@/components/reading/CityAverageLink";
+import { FactCard } from "@/components/reading/FactCard";
+import { loadCity, loadStationPage } from "@/components/reading/load";
+import { NearbyCards } from "@/components/reading/NearbyCards";
+import { meterRows } from "@/components/reading/pollutants";
+import { StationRows } from "@/components/reading/StationRows";
+import { WeatherCard } from "@/components/reading/WeatherCard";
+import { TrendChart } from "@/components/trend/TrendChart";
+import {
+  cityPath,
   officialStation,
   pollutantLabel,
+  sortStations,
   stationDescription,
+  stationPath,
   stationTitle,
 } from "@/components/reading/text";
+import { bandAccent } from "@/lib/aqi";
 
 type StationParams = Promise<{ slug: string }>;
 
@@ -20,76 +38,167 @@ export async function generateMetadata({
   params: StationParams;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const station = await loadStation(slug);
-  if (!station) notFound();
+  const page = await loadStationPage(slug);
+  if (!page) notFound();
   return {
-    title: stationTitle(station),
-    description: stationDescription(station),
+    title: stationTitle(page.station),
+    description: stationDescription(page.station),
+    alternates: { canonical: stationPath(page.station.slug) },
+    openGraph: {
+      title: stationTitle(page.station),
+      description: stationDescription(page.station),
+      url: stationPath(page.station.slug),
+      type: "website",
+    },
   };
 }
 
-export default function StationPage({ params }: { params: StationParams }) {
-  return (
-    <Suspense fallback={<ReadingSkeleton />}>
-      <StationReading params={params} />
-    </Suspense>
-  );
+export default async function StationPage({
+  params,
+}: {
+  params: StationParams;
+}) {
+  const { slug } = await params;
+  // Resolve before rendering so an unknown slug answers 404, not a 200 shell.
+  const page = await loadStationPage(slug);
+  if (!page) notFound();
+  return <StationReading page={page} />;
 }
 
-async function StationReading({ params }: { params: StationParams }) {
-  const { slug } = await params;
-  const station = await loadStation(slug);
-  if (!station) notFound();
+async function StationReading({
+  page,
+}: {
+  page: NonNullable<Awaited<ReturnType<typeof loadStationPage>>>;
+}) {
+  const { station, city, nearby } = page;
   const official = officialStation(station);
+  const others = nearby.filter((item) => item.slug !== station.slug);
+  const cityPage = city ? await loadCity(city.slug) : null;
+  const sameCity = sortStations(cityPage?.stations ?? []);
+  const around = others
+    .filter(
+      (item) => !(item.city === station.city && item.state === station.state),
+    )
+    .slice(0, 6);
+  const reported = meterRows(station.pollutants).length;
 
   return (
-    <article className="reading-layout">
-      <div className="reading-summary">
-        <h1 className="page-title">{station.name}</h1>
-        <p className="lede">
-          {station.city}, {station.state}
-        </p>
-        <div className="mt-8">
-          <AqiFigure aqi={official.aqi} band={official.band} missing="words" />
-        </div>
-        {station.prominent ? (
-          <p className="summary-note summary-lead">
-            Set by {pollutantLabel(station.prominent)}
-          </p>
-        ) : null}
-        <p className="updated">
-          {station.updatedAt
-            ? `Updated ${station.updatedAt}`
-            : "No update time was published with this reading."}
-        </p>
-        <p className="mt-6">
-          <a
-            className="text-link"
-            href={mapHref(station.latitude, station.longitude)}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open the station on a map
-            <span className="sr-only"> (opens in a new tab)</span>
-          </a>
-        </p>
-      </div>
-      <div className="reading-list">
-        <h2 className="kicker">Sub-index</h2>
-        <p className="summary-note">These are index points, not concentrations.</p>
-        {station.pollutants.length === 0 ? (
-          <p className="empty-note">No sub-indices were published for this station.</p>
-        ) : (
-          <dl className="subindex">
-            {station.pollutants.map((reading) => (
-              <div key={reading.id}>
-                <dt>{pollutantLabel(reading.id)}</dt>
-                <dd>{reading.subIndex ?? "—"}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-      </div>
-    </article>
+    <PlaceLayout
+      head={
+        <PlaceHead
+          crumbs={[
+            { label: "Home", href: "/" },
+            { label: station.state },
+            {
+              label: station.city,
+              href: city ? cityPath(city.slug) : undefined,
+            },
+          ]}
+          title={station.name}
+          sub={
+            <>
+              {station.city}, {station.state}
+              <StationDistance
+                latitude={station.latitude}
+                longitude={station.longitude}
+                prefix=" · "
+              />
+            </>
+          }
+          share={{
+            title: `${station.name} air quality`,
+            text:
+              official.aqi != null
+                ? `${station.name} AQI is ${official.aqi}${official.band ? ` (${official.band})` : ""} right now.`
+                : `Air quality at ${station.name}.`,
+            path: stationPath(station.slug),
+          }}
+        />
+      }
+      hero={
+        <PlaceHero
+          kicker="Station AQI"
+          aqi={official.aqi}
+          band={official.band}
+          updatedAt={station.updatedAt}
+          missing="words"
+        />
+      }
+      side={
+        <>
+          <FactCard
+            facts={[
+              {
+                label: "Set by",
+                icon: "pollutant",
+                value:
+                  official.aqi != null && station.prominent
+                    ? pollutantLabel(station.prominent)
+                    : "—",
+              },
+              {
+                label: "City average",
+                icon: "city",
+                value: city ? <CityAverageLink city={city} /> : "—",
+              },
+              {
+                label: "Pollutants reported",
+                icon: "layers",
+                value: `${reported}`,
+              },
+              {
+                label: city ? `Stations in ${city.city}` : "Stations in city",
+                icon: "station",
+                value: city ? `${city.stationsTotal}` : "—",
+              },
+            ]}
+          />
+          <WeatherCard
+            latitude={station.latitude}
+            longitude={station.longitude}
+          />
+          <BandLegend band={official.band} />
+        </>
+      }
+      map={
+        <StationMap
+          pins={stationPins(nearby)}
+          activeSlug={station.slug}
+          hereLabel="Nearby"
+        />
+      }
+    >
+      <PollutantsSection station={station} />
+      <TrendChart
+        kind="station"
+        slug={station.slug}
+        accent={bandAccent(official.band)}
+      />
+      {sameCity.length > 1 ? (
+        <PlaceSection
+          id="stations"
+          title={`Stations in ${station.city}`}
+          sub="Ranked by AQI, highest first."
+        >
+          <StationRows stations={sameCity} activeSlug={station.slug} />
+          {city ? (
+            <p className="psec-link">
+              <Link className="fact-link" href={cityPath(city.slug)}>
+                {`See ${station.city} overview`}
+              </Link>
+            </p>
+          ) : null}
+        </PlaceSection>
+      ) : null}
+      {around.length > 0 ? (
+        <PlaceSection
+          id="nearby"
+          title="Nearby"
+          sub="Stations around this one."
+        >
+          <NearbyCards stations={around} />
+        </PlaceSection>
+      ) : null}
+    </PlaceLayout>
   );
 }
