@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand/Logo";
-import { SITE_NAME, SITE_TAGLINE } from "@/lib/site";
+import { SITE_CLAIM, SITE_NAME, SITE_TAGLINE } from "@/lib/site";
 import { ABOUT_LINKS, EXPLORE_LINKS } from "./links";
 import { Year } from "./Year";
 
@@ -35,10 +35,13 @@ export function Footer() {
           </nav>
         </div>
         <div className="footer-legal">
-          <p>Data: Central Pollution Control Board (CPCB) via data.gov.in</p>
-          <p>
-            © <Year /> {SITE_NAME}
-          </p>
+          <p className="footer-claim">{SITE_CLAIM}</p>
+          <div className="footer-meta">
+            <p>Data: Central Pollution Control Board (CPCB) via data.gov.in</p>
+            <p>
+              © <Year /> {SITE_NAME}
+            </p>
+          </div>
         </div>
       </div>
     </footer>

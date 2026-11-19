@@ -84,11 +84,14 @@
     --map-h: clamp(340px, 30vw, 400px);
   }
 
-  /* The map keeps its own fixed height and rides along beside the facts. */
-  .stage-map {
-    align-self: start;
-    position: sticky;
-    top: 1rem;
+  /* Home: the map spans the reading and the facts, so it fills that column
+     instead of stopping early and leaving a blank under it. */
+  .stage > .stage-map {
+    align-self: stretch;
+    position: relative;
+    top: auto;
+    height: auto;
+    min-height: var(--map-h);
   }
 
   /* Home: the map sits beside the intro copy, centred on it. */

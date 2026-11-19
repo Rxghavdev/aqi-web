@@ -2,6 +2,9 @@ export const SITE_NAME = "Hawa";
 
 export const SITE_TAGLINE = "India's air, in one number.";
 
+/** Footer claim. Same job as Zomato's "Better food for more people". */
+export const SITE_CLAIM = "Air quality for every city in India.";
+
 export const SITE_DESCRIPTION =
   "Live air quality for every Indian city and monitoring station, on the National Air Quality Index, with weather, pollutants and 30-day history.";
 
